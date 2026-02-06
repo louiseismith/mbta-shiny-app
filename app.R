@@ -11,6 +11,7 @@ library(shiny)
 library(leaflet)
 library(dplyr)
 library(reticulate)
+use_virtualenv(file.path(getwd(), "..", "..", ".venv"), required = TRUE)
 
 ## 0.2 Load API key ####################################
 
@@ -25,11 +26,9 @@ for (p in c(".", "..", "../..")) {
 
 ## 0.3 Python data source #################################
 
-# Path to the prototype script: from app dir go up to project root, then into 01_api_queries
-# Run the app from project root with runApp("02_ai_productivity/shiny_app") so paths resolve
+# Script lives in the same folder as app.R
 app_dir = getwd()
-script_path = file.path(app_dir, "..", "..", "01_api_queries", "accessibility_tracker_prototype.py")
-if (!file.exists(script_path)) script_path = normalizePath(script_path, mustWork = FALSE)
+script_path = file.path(app_dir, "accessibility_tracker_prototype.py")
 if (!file.exists(script_path)) stop("Python script not found: ", script_path)
 reticulate::source_python(script_path)
 
