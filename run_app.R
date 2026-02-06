@@ -1,21 +1,19 @@
 # run_app.R
 # Run the MBTA Accessibility Tracker Shiny app.
-# Usage (either way works):
-#   From shiny_app directory:  setwd("02_ai_productivity/shiny_app"); source("run_app.R")
-#   From project root:         source("02_ai_productivity/shiny_app/run_app.R")
+# Run from the app directory (folder with app.R and accessibility_tracker_prototype.py),
+# or from any parent directory; the script will find the app folder.
 
-# Check if we're already in the app directory (has app.R + Python script)
+# Check if this path is the app directory (has app.R + Python script)
 is_app_dir = function(path) {
   file.exists(file.path(path, "app.R")) &&
     file.exists(file.path(path, "accessibility_tracker_prototype.py"))
 }
 
-# Find project root (folder that contains 02_ai_productivity/shiny_app)
-find_root = function() {
+# Walk up the directory tree to find the app directory
+find_app_dir = function() {
   w = getwd()
   for (i in 1:10) {
-    if (is_app_dir(file.path(w, "02_ai_productivity", "shiny_app")))
-      return(file.path(w, "02_ai_productivity", "shiny_app"))
+    if (is_app_dir(w)) return(w)
     w_old = w
     w = dirname(w)
     if (w == w_old) break
@@ -26,16 +24,15 @@ find_root = function() {
 if (is_app_dir(getwd())) {
   app_path = "."
 } else {
-  app_path = find_root()
-  if (is.null(app_path)) {
+  app_dir = find_app_dir()
+  if (is.null(app_dir)) {
     stop(
-      "App not found. Run this script from 02_ai_productivity/shiny_app, ",
-      "or from the project root (folder containing 02_ai_productivity)."
+      "App directory not found. Run this script from the folder that contains ",
+      "app.R and accessibility_tracker_prototype.py, or from a parent of that folder."
     )
   }
-  # app_path is full path to shiny_app; set wd to its parent and run by name
-  setwd(dirname(app_path))
-  app_path = basename(app_path)
+  setwd(app_dir)
+  app_path = "."
 }
 
 # Install R dependencies if missing
