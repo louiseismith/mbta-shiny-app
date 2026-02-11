@@ -45,34 +45,59 @@ get_app_data = function() {
   out
 }
 
-# Facilities list (from py_to_r) -> data frame for one station
-station_facilities_df = function(facilities_list, station_id) {
-  if (length(facilities_list) == 0) return(data.frame())
-  out = vector("list", length(facilities_list))
+# Build a list of facility cards (as Shiny tag objects) for one station
+station_facility_cards = function(facilities_list, station_id) {
+  if (length(facilities_list) == 0) return(list())
+  cards = list()
   for (i in seq_along(facilities_list)) {
     f = facilities_list[[i]]
     if (is.null(f$stop_id) || f$stop_id != station_id) next
     alert = f$alert
-    outage_start = if (length(alert) && !is.null(alert$outage_start)) as.character(alert$outage_start) else NA_character_
-    updated_at = if (length(alert) && !is.null(alert$updated_at)) as.character(alert$updated_at) else NA_character_
-    out[[i]] = data.frame(
-      Type = as.character(f$type %||% ""),
-      Status = gsub("_", " ", as.character(f$status %||% "")),
-      Details = if (length(alert) && !is.null(alert$header)) as.character(alert$header) else as.character(f$short_name %||% ""),
-      `Out Since` = if (!is.na(outage_start)) format(as.POSIXct(outage_start, format = "%Y-%m-%dT%H:%M:%S", tz = "America/New_York"), "%b %d, %Y") else NA_character_,
-      Duration = format_duration(outage_start),
-      Updated = format_duration(updated_at),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
+    status = gsub("_", " ", as.character(f$status %||% ""))
+    type = as.character(f$type %||% "")
+    is_out = identical(f$status, "out_of_service")
+    details = if (length(alert) && !is.null(alert$header)) as.character(alert$header) else as.character(f$short_name %||% "")
+
+    # Status badge
+    badge_class = if (is_out) "facility-badge-out" else "facility-badge-ok"
+    badge = tags$span(class = badge_class, status)
+
+    # Time info line (only for outages)
+    time_line = NULL
+    if (is_out) {
+      outage_start = if (length(alert) && !is.null(alert$outage_start)) as.character(alert$outage_start) else NA_character_
+      updated_at = if (length(alert) && !is.null(alert$updated_at)) as.character(alert$updated_at) else NA_character_
+      parts = c()
+      if (!is.na(outage_start)) {
+        since_date = format(as.POSIXct(outage_start, format = "%Y-%m-%dT%H:%M:%S", tz = "America/New_York"), "%b %d, %Y")
+        duration = format_duration(outage_start)
+        parts = c(parts, paste0("Out since ", since_date, " (", duration, ")"))
+      }
+      if (!is.na(updated_at)) {
+        parts = c(parts, paste0("Updated ", format_duration(updated_at), " ago"))
+      }
+      if (length(parts) > 0) {
+        time_line = tags$div(class = "facility-time", paste(parts, collapse = " \u00b7 "))
+      }
+    }
+
+    card = tags$div(
+      class = paste("facility-card", if (is_out) "facility-out" else "facility-ok"),
+      tags$div(class = "facility-header", tags$strong(type), badge),
+      tags$div(class = "facility-details", details),
+      time_line
     )
+    cards = c(cards, list(card))
   }
-  valid = !vapply(out, is.null, logical(1))
-  if (!any(valid)) return(data.frame())
-  d = dplyr::bind_rows(out[valid])
-  d
+  cards
 }
 
 `%||%` = function(x, y) if (is.null(x)) y else x
+
+# Shared palette
+color_ok = "#5cb85c"
+color_warn = "#f0ad4e"
+color_out = "#d9534f"
 
 # Human-readable duration from an ISO timestamp to now
 format_duration = function(iso_timestamp) {
@@ -96,14 +121,59 @@ format_duration = function(iso_timestamp) {
 ui = fluidPage(
   tags$head(
     tags$style(HTML(
-      ".sidebar-table-container {
-        max-width: 100%;
-        overflow-x: auto;
-        overflow-y: auto;
-        max-height: 50vh;
+      ":root {
+        --color-ok: #5cb85c;
+        --color-warn: #f0ad4e;
+        --color-out: #d9534f;
       }
-      .sidebar-table-container table {
+      .leaflet-container {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .facility-cards {
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+      .facility-card {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+      .facility-out {
+        border-left: 4px solid var(--color-out);
+      }
+      .facility-ok {
+        border-left: 4px solid var(--color-ok);
+      }
+      .facility-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .facility-badge-out {
+        background: var(--color-out);
+        color: white;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+      }
+      .facility-badge-ok {
+        background: var(--color-ok);
+        color: white;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+      }
+      .facility-details {
         font-size: 0.9em;
+        color: #555;
+        margin-bottom: 4px;
+      }
+      .facility-time {
+        font-size: 0.8em;
+        color: #888;
       }
     "))
   ),
@@ -115,8 +185,8 @@ ui = fluidPage(
       hr(),
       uiOutput("station_title"),
       div(
-        class = "sidebar-table-container",
-        tableOutput("station_facilities")
+        class = "facility-cards",
+        uiOutput("station_facilities")
       ),
       width = 4
     ),
@@ -162,7 +232,7 @@ server = function(input, output, session) {
     st = dplyr::bind_rows(lapply(stations, as.data.frame))
 
     pal = leaflet::colorFactor(
-      palette = c("green", "orange", "red"),
+      palette = c(color_ok, color_warn, color_out),
       domain = c("all_ok", "some_out", "all_out"),
       levels = c("all_ok", "some_out", "all_out")
     )
@@ -188,10 +258,9 @@ server = function(input, output, session) {
       ) %>%
       addLegend(
         "bottomright",
-        pal = pal,
-        values = ~status_group,
-        title = "Status",
-        labels = c("All operational", "Some outages", "All out")
+        colors = c(color_ok, color_warn, color_out),
+        labels = c("All operational", "Some outages", "All out"),
+        title = "Status"
       )
     m
   })
@@ -218,17 +287,16 @@ server = function(input, output, session) {
     h4(name)
   })
 
-  output$station_facilities = renderTable({
+  output$station_facilities = renderUI({
     id = selected_station()
     if (is.null(id)) return(NULL)
     d = app_data()
     fac = d$facilities
     if (length(fac) == 0) return(NULL)
-    # fac is a reticulate dict/list; get facilities for this station
-    tbl = station_facilities_df(fac, id)
-    if (nrow(tbl) == 0) return(data.frame(Message = "No facility data for this station."))
-    tbl
-  }, striped = TRUE)
+    cards = station_facility_cards(fac, id)
+    if (length(cards) == 0) return(p(em("No facility data for this station.")))
+    tagList(cards)
+  })
 }
 
 # 4. RUN ###################################
