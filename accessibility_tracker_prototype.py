@@ -28,12 +28,12 @@ def fetch_facilities():
 
 
 def fetch_accessibility_alerts():
-    """Fetch current alerts affecting wheelchair users (elevator/escalator outages)."""
+    """Fetch current alerts affecting elevator/escalator users."""
     response = requests.get(
         f"{BASE_URL}/alerts",
         headers=headers,
         params={
-            "filter[activity]": "USING_WHEELCHAIR"
+            "filter[activity]": "USING_WHEELCHAIR,USING_ESCALATOR"
         }
     )
     response.raise_for_status()
@@ -88,6 +88,9 @@ def build_accessibility_status():
         alert_attrs = alert["attributes"]
         affected_facility_ids = extract_facility_ids_from_alert(alert)
 
+        active_periods = alert_attrs.get("active_period", [])
+        outage_start = active_periods[0].get("start") if active_periods else None
+
         alert_summary = {
             "id": alert["id"],
             "header": alert_attrs.get("header"),
@@ -96,7 +99,8 @@ def build_accessibility_status():
             "cause": alert_attrs.get("cause"),
             "effect": alert_attrs.get("effect"),
             "updated_at": alert_attrs.get("updated_at"),
-            "active_period": alert_attrs.get("active_period", [])
+            "active_period": active_periods,
+            "outage_start": outage_start,
         }
 
         for facility_id in affected_facility_ids:
@@ -147,6 +151,9 @@ def get_data_for_app():
     for alert in alerts_data.get("data", []):
         alert_attrs = alert["attributes"]
         affected_facility_ids = extract_facility_ids_from_alert(alert)
+        active_periods = alert_attrs.get("active_period", [])
+        outage_start = active_periods[0].get("start") if active_periods else None
+
         alert_summary = {
             "id": alert["id"],
             "header": alert_attrs.get("header"),
@@ -155,7 +162,8 @@ def get_data_for_app():
             "cause": alert_attrs.get("cause"),
             "effect": alert_attrs.get("effect"),
             "updated_at": alert_attrs.get("updated_at"),
-            "active_period": alert_attrs.get("active_period", []),
+            "active_period": active_periods,
+            "outage_start": outage_start,
         }
         for facility_id in affected_facility_ids:
             if facility_id in facilities:

@@ -53,14 +53,17 @@ station_facilities_df = function(facilities_list, station_id) {
     f = facilities_list[[i]]
     if (is.null(f$stop_id) || f$stop_id != station_id) next
     alert = f$alert
+    outage_start = if (length(alert) && !is.null(alert$outage_start)) as.character(alert$outage_start) else NA_character_
+    updated_at = if (length(alert) && !is.null(alert$updated_at)) as.character(alert$updated_at) else NA_character_
     out[[i]] = data.frame(
-      type = as.character(f$type %||% ""),
-      short_name = as.character(f$short_name %||% ""),
-      status = as.character(f$status %||% ""),
-      severity = if (length(alert) && !is.null(alert$severity)) as.character(alert$severity) else NA_character_,
-      cause = if (length(alert) && !is.null(alert$cause)) as.character(alert$cause) else NA_character_,
-      header = if (length(alert) && !is.null(alert$header)) as.character(alert$header) else NA_character_,
-      stringsAsFactors = FALSE
+      Type = as.character(f$type %||% ""),
+      Status = gsub("_", " ", as.character(f$status %||% "")),
+      Details = if (length(alert) && !is.null(alert$header)) as.character(alert$header) else as.character(f$short_name %||% ""),
+      `Out Since` = if (!is.na(outage_start)) format(as.POSIXct(outage_start, format = "%Y-%m-%dT%H:%M:%S", tz = "America/New_York"), "%b %d, %Y") else NA_character_,
+      Duration = format_duration(outage_start),
+      Updated = format_duration(updated_at),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
   }
   valid = !vapply(out, is.null, logical(1))
@@ -70,6 +73,23 @@ station_facilities_df = function(facilities_list, station_id) {
 }
 
 `%||%` = function(x, y) if (is.null(x)) y else x
+
+# Human-readable duration from an ISO timestamp to now
+format_duration = function(iso_timestamp) {
+  if (is.null(iso_timestamp) || is.na(iso_timestamp) || iso_timestamp == "") return(NA_character_)
+  start = as.POSIXct(iso_timestamp, format = "%Y-%m-%dT%H:%M:%S", tz = "America/New_York")
+  if (is.na(start)) return(NA_character_)
+  diff_mins = as.numeric(difftime(Sys.time(), start, units = "mins"))
+  if (diff_mins < 60) return(paste0(round(diff_mins), " min"))
+  diff_hours = diff_mins / 60
+  if (diff_hours < 24) return(paste0(round(diff_hours), " hr"))
+  diff_days = diff_hours / 24
+  if (diff_days < 30) return(paste0(round(diff_days), " days"))
+  diff_months = diff_days / 30.44
+  if (diff_months < 12) return(paste0(round(diff_months), " mo"))
+  diff_years = diff_days / 365.25
+  return(paste0(round(diff_years, 1), " yr"))
+}
 
 # 2. UI ###################################
 
