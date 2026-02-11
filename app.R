@@ -175,6 +175,26 @@ ui = fluidPage(
         font-size: 0.8em;
         color: #888;
       }
+      .ai-report-box {
+        background: #e8f4fd;
+        border: 1px solid #b8daff;
+        border-radius: 4px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        font-size: 0.9em;
+        line-height: 1.5;
+      }
+      .ai-report-box .ai-report-label {
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: #004085;
+      }
+      .ai-report-error {
+        font-style: italic;
+        color: #888;
+        font-size: 0.85em;
+        margin-bottom: 12px;
+      }
     "))
   ),
   titlePanel("MBTA Accessibility Tracker"),
@@ -184,6 +204,7 @@ ui = fluidPage(
       p(strong("System summary:"), textOutput("summary", inline = TRUE)),
       hr(),
       uiOutput("station_title"),
+      uiOutput("ai_report"),
       div(
         class = "facility-cards",
         uiOutput("station_facilities")
@@ -285,6 +306,26 @@ server = function(input, output, session) {
       }
     }
     h4(name)
+  })
+
+  output$ai_report = renderUI({
+    id = selected_station()
+    if (is.null(id)) return(NULL)
+    d = app_data()
+    nid = showNotification("Generating AI report...", duration = NULL, type = "message")
+    on.exit(removeNotification(nid), add = TRUE)
+    report = tryCatch(
+      generate_station_report(id, d$facilities, d$stations),
+      error = function(e) paste0("__error__: ", e$message)
+    )
+    if (grepl("^__error__:", report)) {
+      return(tags$div(class = "ai-report-error", "AI report unavailable. Is Ollama running?"))
+    }
+    tags$div(
+      class = "ai-report-box",
+      tags$div(class = "ai-report-label", "AI Accessibility Report"),
+      tags$p(report)
+    )
   })
 
   output$station_facilities = renderUI({
