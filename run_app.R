@@ -9,9 +9,15 @@ is_app_dir = function(path) {
     file.exists(file.path(path, "accessibility_tracker_prototype.py"))
 }
 
-# Walk up the directory tree to find the app directory
+# Search for the app directory: check children first, then walk up
 find_app_dir = function() {
   w = getwd()
+  # Check immediate subdirectories
+  subdirs = list.dirs(w, recursive = FALSE)
+  for (d in subdirs) {
+    if (is_app_dir(d)) return(d)
+  }
+  # Walk up the directory tree
   for (i in 1:10) {
     if (is_app_dir(w)) return(w)
     w_old = w
