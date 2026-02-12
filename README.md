@@ -1,6 +1,6 @@
 # MBTA Accessibility Tracker — Shiny App
 
-Real-time elevator/escalator status for the Boston MBTA. Click a station on the map to see accessibility details and an AI-generated report.
+Real-time accessibility status for the Boston MBTA. Search for or click a station on the map to see elevator, escalator, ramp, and portable lift details alongside an AI-generated travel briefing.
 
 ## Table of Contents
 
@@ -51,11 +51,11 @@ Or in RStudio: set the working directory to that folder, then open and **Source*
 
 ## What it does
 
-- **Data:** Fetches facilities and alerts from the MBTA API via the Python script in this folder: `accessibility_tracker_prototype.py`.
-- **Map:** Stations on a light CartoDB Positron basemap; marker color = all operational (green), some outages (orange), or all out (red). Markers have a white border for visibility.
-- **Sidebar:** Click a station to see its elevator/escalator cards; the cards scroll inside the sidebar and won't overflow. Alert fields (e.g. severity) are normalized so mixed types from the API don't cause errors.
+- **Data:** Fetches elevators, escalators, ramps, portable boarding lifts, and accessibility alerts from the MBTA API via `accessibility_tracker_prototype.py`.
+- **Map:** Stations on a light CartoDB Positron basemap; marker color = all operational (green), some outages (orange), or all out (red).
 - **Station search:** Type-ahead search bar in the sidebar to quickly find and zoom to any station.
-- **AI report:** When a station is selected, an AI-generated accessibility report appears above the facility cards. The report summarizes what's working, practical impact for riders needing step-free access, and any MBTA-provided alternative routing instructions. Requires Ollama with the Gemma 3 12B model.
+- **Sidebar:** Select a station (via map click or search) to see facility status cards. Stations flagged as permanently inaccessible to wheelchair users show a warning.
+- **AI report:** When a station is selected, an AI-generated accessibility briefing appears above the facility cards. It summarizes what's working, what's not, MBTA-provided alternative routing, and any service disruptions (shuttles, suspensions, etc.) on lines through that station. Requires Ollama with the Gemma 3 12B model.
 
 ## Files
 
