@@ -43,48 +43,25 @@ if (length(missing) > 0) {
   install.packages(missing, repos = "https://cloud.r-project.org")
 }
 
-# Check and install Python dependencies using uv
+# Point reticulate at the project venv (same path app.R uses)
 library(reticulate)
-python_packages = c("requests", "python-dotenv")
-message("Checking Python dependencies...")
-py_installed = tryCatch({
-  missing_packages = character(0)
-  for (pkg in python_packages) {
-    # python-dotenv is imported as 'dotenv'
-    module_name = if (pkg == "python-dotenv") "dotenv" else pkg
-    if (!py_module_available(module_name)) {
-      missing_packages = c(missing_packages, pkg)
-    }
-  }
-  
-  if (length(missing_packages) > 0) {
-    message("Installing Python packages with uv: ", paste(missing_packages, collapse = ", "))
-    # Use uv pip install (uv as pip replacement)
-    cmd = paste("uv pip install", paste(missing_packages, collapse = " "))
-    result = system(cmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
-    if (result != 0) {
-      stop("uv pip install failed")
-    }
-    # Verify installation
-    for (pkg in missing_packages) {
-      module_name = if (pkg == "python-dotenv") "dotenv" else pkg
-      if (!py_module_available(module_name)) {
-        stop("Package ", pkg, " still not available after installation")
-      }
-    }
-  }
-  TRUE
-}, error = function(e) {
-  warning(
-    "Could not verify/install Python packages with uv. ",
-    "Please install manually: uv pip install requests python-dotenv\n",
-    "Error: ", conditionMessage(e)
+venv_path = file.path(getwd(), "..", "..", ".venv")
+if (!dir.exists(venv_path)) {
+  stop(
+    "Python virtualenv not found at ", normalizePath(venv_path, mustWork = FALSE),
+    "\nCreate it with: uv venv && uv pip install requests python-dotenv"
   )
-  FALSE
-})
+}
+use_virtualenv(venv_path, required = TRUE)
 
-if (!py_installed) {
-  stop("Python dependencies not available. Please install: uv pip install requests python-dotenv")
+# Verify Python packages are available
+py_ok = tryCatch({
+  stopifnot(py_module_available("requests"), py_module_available("dotenv"))
+  TRUE
+}, error = function(e) FALSE)
+
+if (!py_ok) {
+  stop("Missing Python packages. Install with: uv pip install requests python-dotenv")
 }
 
 shiny::runApp(app_path)
