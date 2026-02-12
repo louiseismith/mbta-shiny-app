@@ -1,6 +1,6 @@
 # MBTA Accessibility Tracker — Shiny App
 
-Real-time elevator/escalator status for the Boston MBTA. Click a station on the map to see accessibility details.
+Real-time elevator/escalator status for the Boston MBTA. Click a station on the map to see accessibility details and an AI-generated report.
 
 ## Table of Contents
 
@@ -8,15 +8,20 @@ Real-time elevator/escalator status for the Boston MBTA. Click a station on the 
 - [Setup](#setup)
 - [How to run](#how-to-run)
 - [What it does](#what-it-does)
+- [Files](#files)
 
 ## Requirements
 
 - **R** packages: `shiny`, `leaflet`, `dplyr`, `reticulate` (installed automatically by `run_app.R` if missing).
-- **Python** (used via `reticulate`): `requests`, `python-dotenv`. Install with **uv**:  
+- **Python** (used via `reticulate`): `requests`, `python-dotenv`. Install with **uv**:
   `uv pip install requests python-dotenv`
-- **MBTA API key** in a `.env` file: `MBTA_API_KEY=your_key`.  
-  The app looks for `.env` in the app directory, then in parent directories.  
+- **MBTA API key** in a `.env` file: `MBTA_API_KEY=your_key`.
+  The app looks for `.env` in the app directory, then in parent directories.
   Get a key at the [MBTA Developer Portal](https://api-v3.mbta.com/).
+- **Ollama** (optional, for AI reports): install from [ollama.com](https://ollama.com/) and pull the Gemma 3 12B model:
+  ```bash
+  ollama pull gemma3:12b
+  ```
 
 ## Setup
 
@@ -30,6 +35,7 @@ Real-time elevator/escalator status for the Boston MBTA. Click a station on the 
   ```
   MBTA_API_KEY=your_key_here
   ```
+- **Ollama:** Make sure the Ollama server is running (`ollama serve`, or it may already be running as a background service). The app degrades gracefully if Ollama is unavailable — everything works except the AI report box shows a fallback message.
 
 ## How to run
 
@@ -47,4 +53,14 @@ Or in RStudio: set the working directory to that folder, then open and **Source*
 
 - **Data:** Fetches facilities and alerts from the MBTA API via the Python script in this folder: `accessibility_tracker_prototype.py`.
 - **Map:** Stations on a light CartoDB Positron basemap; marker color = all operational (green), some outages (orange), or all out (red). Markers have a white border for visibility.
-- **Sidebar:** Click a station to see its elevator/escalator table; the table scrolls inside the sidebar and won’t overflow. Alert fields (e.g. severity) are normalized so mixed types from the API don’t cause errors.
+- **Sidebar:** Click a station to see its elevator/escalator cards; the cards scroll inside the sidebar and won't overflow. Alert fields (e.g. severity) are normalized so mixed types from the API don't cause errors.
+- **Station search:** Type-ahead search bar in the sidebar to quickly find and zoom to any station.
+- **AI report:** When a station is selected, an AI-generated accessibility report appears above the facility cards. The report summarizes what's working, practical impact for riders needing step-free access, and any MBTA-provided alternative routing instructions. Requires Ollama with the Gemma 3 12B model.
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `app.R` | Shiny app (UI + server) |
+| `run_app.R` | Launcher script; installs missing R packages |
+| `accessibility_tracker_prototype.py` | MBTA API queries + AI report generation |

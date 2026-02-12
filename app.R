@@ -54,7 +54,7 @@ station_facility_cards = function(facilities_list, station_id) {
     if (is.null(f$stop_id) || f$stop_id != station_id) next
     alert = f$alert
     status = gsub("_", " ", as.character(f$status %||% ""))
-    type = as.character(f$type %||% "")
+    type = facility_type_label(as.character(f$type %||% ""))
     is_out = identical(f$status, "out_of_service")
     details = if (length(alert) && !is.null(alert$header)) as.character(alert$header) else as.character(f$short_name %||% "")
 
@@ -93,6 +93,17 @@ station_facility_cards = function(facilities_list, station_id) {
 }
 
 `%||%` = function(x, y) if (is.null(x)) y else x
+
+# Display names for facility types
+facility_type_label = function(type) {
+  labels = list(
+    ELEVATOR = "Elevator",
+    ESCALATOR = "Escalator",
+    RAMP = "Ramp",
+    PORTABLE_BOARDING_LIFT = "Portable Lift"
+  )
+  labels[[type]] %||% type
+}
 
 # Shared palette
 color_ok = "#5cb85c"
@@ -200,7 +211,9 @@ ui = fluidPage(
   titlePanel("MBTA Accessibility Tracker"),
   sidebarLayout(
     sidebarPanel(
-      p("Click a station on the map to see elevator/escalator status."),
+      selectizeInput("station_search", "Find a station:",
+        choices = NULL, options = list(placeholder = "Type a station name…")
+      ),
       p(strong("System summary:"), textOutput("summary", inline = TRUE)),
       hr(),
       uiOutput("station_title"),
@@ -226,6 +239,34 @@ server = function(input, output, session) {
   app_data = reactive({
     get_app_data()
   })
+
+  # Selected station (from map click or search bar)
+  selected_station = reactiveVal(NULL)
+
+  # Populate station search dropdown once data is available
+  observe({
+    d = app_data()
+    stations = d$stations
+    if (length(stations) == 0) return()
+    choices = vapply(stations, function(s) s$id, character(1))
+    names(choices) = vapply(stations, function(s) s$name %||% s$id, character(1))
+    choices = choices[order(names(choices))]
+    updateSelectizeInput(session, "station_search", choices = c(Choose = "", choices), server = TRUE)
+  })
+
+  # When a station is picked from the search bar, zoom the map and select it
+  observeEvent(input$station_search, {
+    id = input$station_search
+    if (is.null(id) || id == "") return()
+    d = app_data()
+    for (s in d$stations) {
+      if (identical(s$id, id)) {
+        leafletProxy("map") %>% setView(s$lon, s$lat, zoom = 15)
+        break
+      }
+    }
+    selected_station(id)
+  }, ignoreInit = TRUE)
 
   # System summary text
   output$summary = renderText({
@@ -286,11 +327,10 @@ server = function(input, output, session) {
     m
   })
 
-  # Selected station (from map click)
-  selected_station = reactiveVal(NULL)
-
   observeEvent(input$map_marker_click, {
-    selected_station(input$map_marker_click$id)
+    id = input$map_marker_click$id
+    selected_station(id)
+    updateSelectizeInput(session, "station_search", selected = id)
   })
 
   output$station_title = renderUI({
@@ -299,32 +339,71 @@ server = function(input, output, session) {
     d = app_data()
     stations = d$stations
     name = id
+    wb = 0L
     for (s in stations) {
       if (identical(s$id, id)) {
         name = s$name %||% id
+        wb = as.integer(s$wheelchair_boarding %||% 0L)
         break
       }
     }
-    h4(name)
+    title = h4(name)
+    if (identical(wb, 2L)) {
+      tagList(
+        title,
+        tags$div(
+          style = "color: #d9534f; font-weight: bold; margin-bottom: 8px;",
+          "\u26A0 Station permanently inaccessible to wheelchair users"
+        )
+      )
+    } else {
+      title
+    }
+  })
+
+  # AI report: use reactiveVal so we can defer the slow Ollama call
+  # and let the facility cards flush to the browser first.
+  ai_report_text = reactiveVal(NULL)
+
+  observeEvent(selected_station(), {
+    id = selected_station()
+    if (is.null(id)) {
+      ai_report_text(NULL)
+      return()
+    }
+    # Set loading state immediately — this flushes with the facility cards
+    ai_report_text("__loading__")
+    d = isolate(app_data())
+    # Schedule the slow AI call AFTER the current outputs reach the browser
+    session$onFlushed(function() {
+      report = tryCatch(
+        generate_station_report(id, d$facilities, d$stations),
+        error = function(e) paste0("__error__: ", e$message)
+      )
+      ai_report_text(report)
+    }, once = TRUE)
   })
 
   output$ai_report = renderUI({
-    id = selected_station()
-    if (is.null(id)) return(NULL)
-    d = app_data()
-    nid = showNotification("Generating AI report...", duration = NULL, type = "message")
-    on.exit(removeNotification(nid), add = TRUE)
-    report = tryCatch(
-      generate_station_report(id, d$facilities, d$stations),
-      error = function(e) paste0("__error__: ", e$message)
-    )
+    report = ai_report_text()
+    if (is.null(report)) return(NULL)
+    if (identical(report, "__loading__")) {
+      return(tags$div(
+        class = "ai-report-box",
+        tags$div(class = "ai-report-label", "AI Accessibility Report"),
+        tags$p(em("Generating report…"))
+      ))
+    }
     if (grepl("^__error__:", report)) {
       return(tags$div(class = "ai-report-error", "AI report unavailable. Is Ollama running?"))
     }
+    paragraphs = strsplit(report, "\n\\s*\n")[[1]]
+    paragraphs = trimws(paragraphs)
+    paragraphs = paragraphs[paragraphs != ""]
     tags$div(
       class = "ai-report-box",
       tags$div(class = "ai-report-label", "AI Accessibility Report"),
-      tags$p(report)
+      tagList(lapply(paragraphs, tags$p))
     )
   })
 

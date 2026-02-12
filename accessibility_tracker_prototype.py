@@ -14,12 +14,12 @@ if API_KEY:
 
 
 def fetch_facilities():
-    """Fetch all elevators and escalators from MBTA."""
+    """Fetch elevators, escalators, ramps, and portable lifts from MBTA."""
     response = requests.get(
         f"{BASE_URL}/facilities",
         headers=headers,
         params={
-            "filter[type]": "ELEVATOR,ESCALATOR",
+            "filter[type]": "ELEVATOR,ESCALATOR,RAMP,PORTABLE_BOARDING_LIFT",
             "include": "stop"  # Include stop data for station names
         }
     )
@@ -43,9 +43,9 @@ def fetch_accessibility_alerts():
 def fetch_route_alerts(stop_id):
     """Fetch all non-facility alerts for the routes serving a station.
 
-    Returns a list of alert dicts (header, effect, description, active_period)
-    for service-level alerts (shuttles, delays, suspensions, etc.) that affect
-    routes passing through the given stop.  Facility-specific alerts (elevator/
+    Returns a list of alert dicts (header, effect, description) for
+    service-level alerts (shuttles, suspensions, etc.) that affect routes
+    passing through the given stop.  Facility-specific alerts (elevator/
     escalator closures) are excluded since they are already tracked separately.
     """
     # 1. Discover which routes serve this stop
@@ -86,12 +86,10 @@ def fetch_route_alerts(stop_id):
             stop_ids = {e.get("stop") for e in entities if "stop" in e}
             if stop_id not in stop_ids:
                 continue
-        active_periods = attr.get("active_period", [])
         service_alerts.append({
             "header": header,
             "effect": effect,
             "description": (attr.get("description") or "").strip(),
-            "active_period": active_periods,
         })
     return service_alerts
 
@@ -106,67 +104,6 @@ def extract_facility_ids_from_alert(alert):
     return facility_ids
 
 
-def build_accessibility_status():
-    """
-    Combine facilities and alerts to build a status dashboard.
-    Returns a dict of facilities with their current status.
-    """
-    # Fetch data
-    facilities_data = fetch_facilities()
-    alerts_data = fetch_accessibility_alerts()
-
-    # Build lookup of included stops (for station names)
-    stops_lookup = {}
-    for included in facilities_data.get("included", []):
-        if included["type"] == "stop":
-            stops_lookup[included["id"]] = included["attributes"].get("name", "Unknown")
-
-    # Build facility inventory
-    facilities = {}
-    for item in facilities_data.get("data", []):
-        facility_id = item["id"]
-        attrs = item["attributes"]
-        stop_id = item.get("relationships", {}).get("stop", {}).get("data", {}).get("id")
-
-        facilities[facility_id] = {
-            "id": facility_id,
-            "type": attrs.get("type"),  # ELEVATOR or ESCALATOR
-            "name": attrs.get("long_name"),
-            "short_name": attrs.get("short_name"),
-            "stop_id": stop_id,
-            "station_name": stops_lookup.get(stop_id, "Unknown"),
-            "status": "operational",  # Default, will update if alert exists
-            "alert": None
-        }
-
-    # Mark facilities with active alerts
-    for alert in alerts_data.get("data", []):
-        alert_attrs = alert["attributes"]
-        affected_facility_ids = extract_facility_ids_from_alert(alert)
-
-        active_periods = alert_attrs.get("active_period", [])
-        outage_start = active_periods[0].get("start") if active_periods else None
-
-        alert_summary = {
-            "id": alert["id"],
-            "header": alert_attrs.get("header"),
-            "description": alert_attrs.get("description"),
-            "severity": alert_attrs.get("severity"),
-            "cause": alert_attrs.get("cause"),
-            "effect": alert_attrs.get("effect"),
-            "updated_at": alert_attrs.get("updated_at"),
-            "active_period": active_periods,
-            "outage_start": outage_start,
-        }
-
-        for facility_id in affected_facility_ids:
-            if facility_id in facilities:
-                facilities[facility_id]["status"] = "out_of_service"
-                facilities[facility_id]["alert"] = alert_summary
-
-    return facilities
-
-
 def get_data_for_app():
     """
     Return facilities and stations for the Shiny app (map + station details).
@@ -175,7 +112,7 @@ def get_data_for_app():
     facilities_data = fetch_facilities()
     alerts_data = fetch_accessibility_alerts()
 
-    # Build lookup of included stops (name + coordinates for map)
+    # Build lookup of included stops (name + coordinates + wheelchair_boarding for map)
     stops_lookup = {}
     for included in facilities_data.get("included", []):
         if included["type"] == "stop":
@@ -184,9 +121,10 @@ def get_data_for_app():
                 "name": attrs.get("name", "Unknown"),
                 "latitude": attrs.get("latitude"),
                 "longitude": attrs.get("longitude"),
+                "wheelchair_boarding": attrs.get("wheelchair_boarding", 0),
             }
 
-    # Build facility inventory (same logic as build_accessibility_status)
+    # Build facility inventory
     facilities = {}
     for item in facilities_data.get("data", []):
         facility_id = item["id"]
@@ -214,11 +152,9 @@ def get_data_for_app():
             "id": alert["id"],
             "header": alert_attrs.get("header"),
             "description": alert_attrs.get("description"),
-            "severity": alert_attrs.get("severity"),
             "cause": alert_attrs.get("cause"),
             "effect": alert_attrs.get("effect"),
             "updated_at": alert_attrs.get("updated_at"),
-            "active_period": active_periods,
             "outage_start": outage_start,
         }
         for facility_id in affected_facility_ids:
@@ -250,51 +186,13 @@ def get_data_for_app():
             "lon": lon,
             "n_operational": counts["operational"],
             "n_out_of_service": counts["out_of_service"],
+            "wheelchair_boarding": info.get("wheelchair_boarding", 0),
         })
 
     return {"facilities": facilities, "stations": stations}
 
 
-def summarize_status(facilities):
-    """Print a summary of accessibility status."""
-    total = len(facilities)
-    operational = sum(1 for f in facilities.values() if f["status"] == "operational")
-    out_of_service = total - operational
-
-    print("=" * 60)
-    print("MBTA ACCESSIBILITY STATUS")
-    print("=" * 60)
-    print(f"Total facilities: {total}")
-    print(f"Operational: {operational}")
-    print(f"Out of service: {out_of_service}")
-    print("=" * 60)
-
-    # Group outages by station
-    outages_by_station = {}
-    for f in facilities.values():
-        if f["status"] == "out_of_service":
-            station = f["station_name"]
-            if station not in outages_by_station:
-                outages_by_station[station] = []
-            outages_by_station[station].append(f)
-
-    if outages_by_station:
-        print("\nCURRENT OUTAGES:")
-        print("-" * 60)
-        for station, outages in sorted(outages_by_station.items()):
-            print(f"\n{station}:")
-            for f in outages:
-                severity = f["alert"]["severity"] if f["alert"] else "?"
-                print(f"  [{severity}] {f['type']}: {f['short_name']}")
-                if f["alert"]:
-                    print(f"      Cause: {f['alert']['cause']}")
-    else:
-        print("\nNo current outages!")
-
-    return outages_by_station
-
-
-def _query_ollama(prompt, model="gemma3"):
+def _query_ollama(prompt, model="gemma3:12b"):
     """Send a prompt to a local Ollama instance and return the response text."""
     resp = requests.post(
         "http://localhost:11434/api/generate",
@@ -302,9 +200,9 @@ def _query_ollama(prompt, model="gemma3"):
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"num_predict": 200},
+            "options": {"num_predict": 300},
         },
-        timeout=30,
+        timeout=60,
     )
     resp.raise_for_status()
     return resp.json()["response"]
@@ -342,47 +240,59 @@ def _format_duration(iso_timestamp):
         return None
 
 
-def _build_station_prompt(station_name, station_facilities, system_stats,
-                          service_alerts=None):
-    """Build a structured prompt for the AI accessibility report.
-
-    Parameters
-    ----------
-    service_alerts : list[dict] | None
-        Non-facility alerts for the routes serving this station (shuttles,
-        delays, suspensions, etc.) as returned by fetch_route_alerts().
-    """
+def _build_station_prompt(station_name, station_facilities,
+                          service_alerts=None, wheelchair_boarding=0):
+    """Build a structured prompt for the AI accessibility report."""
     if service_alerts is None:
         service_alerts = []
 
-    n_elevators = sum(1 for f in station_facilities if f.get("type") == "ELEVATOR")
-    n_escalators = sum(1 for f in station_facilities if f.get("type") == "ESCALATOR")
-    n_out = sum(1 for f in station_facilities if f.get("status") == "out_of_service")
-    elevators_out = sum(
-        1 for f in station_facilities
-        if f.get("type") == "ELEVATOR" and f.get("status") == "out_of_service"
-    )
-
-    # Build a set of out-of-service facility identifiers for contradiction detection.
-    # We need short searchable strings like "elevator 876" that will appear in
-    # MBTA detour text, not full names like "Chinatown Elevator 876 (Oak Grove...)".
-    out_of_service_ids = set()
+    # --- Facility type counts ---
+    type_labels = {
+        "ELEVATOR": "elevator",
+        "ESCALATOR": "escalator",
+        "RAMP": "ramp",
+        "PORTABLE_BOARDING_LIFT": "portable lift",
+    }
+    counts = {}
+    out_counts = {}
     for f in station_facilities:
+        ftype = f.get("type", "UNKNOWN")
+        counts[ftype] = counts.get(ftype, 0) + 1
         if f.get("status") == "out_of_service":
-            ftype = (f.get("type") or "").lower()     # "elevator"
-            fid = f.get("id") or ""                    # "876"
-            if ftype and fid:
-                out_of_service_ids.add(f"{ftype} {fid}")  # "elevator 876"
+            out_counts[ftype] = out_counts.get(ftype, 0) + 1
+
+    count_parts = []
+    for ftype in ("ELEVATOR", "ESCALATOR", "RAMP", "PORTABLE_BOARDING_LIFT"):
+        total = counts.get(ftype, 0)
+        if total == 0:
+            continue
+        out = out_counts.get(ftype, 0)
+        label = type_labels.get(ftype, ftype.lower())
+        count_parts.append(f"{label}s: {total} ({out} out)" if total != 1
+                           else f"{label}s: 1 ({out} out)")
+
+    summary_line = " | ".join(count_parts) if count_parts else "No facilities on record"
+
+    # --- Wheelchair boarding status ---
+    wheelchair_line = ""
+    if wheelchair_boarding == 2:
+        wheelchair_line = (
+            "STATION WHEELCHAIR STATUS: NOT ACCESSIBLE — this station is "
+            "permanently inaccessible to wheelchair users per GTFS data.\n\n"
+        )
 
     # --- Facility details block ---
-    facility_lines = []
-    for f in station_facilities:
-        name = f.get("name") or f.get("short_name") or ""
-        status_label = "OPERATIONAL" if f.get("status") == "operational" else "OUT OF SERVICE"
-        line = f"- {f['type']} \"{name}\": {status_label}"
+    operational = [f for f in station_facilities if f.get("status") == "operational"]
+    out_of_service = [f for f in station_facilities if f.get("status") == "out_of_service"]
 
-        if f.get("status") != "operational" and f.get("alert"):
-            alert = f["alert"]
+    facility_lines = []
+
+    for f in out_of_service:
+        name = f.get("name") or f.get("short_name") or ""
+        line = f"- {f['type']} \"{name}\": OUT OF SERVICE"
+
+        alert = f.get("alert")
+        if alert:
             duration = _format_duration(alert.get("outage_start"))
             if duration:
                 line += f" (down {duration})"
@@ -394,18 +304,20 @@ def _build_station_prompt(station_name, station_facilities, system_stats,
             desc = (alert.get("description") or "").strip()
             if desc:
                 line += f"\n  MBTA instructions: {desc}"
-                # Check if instructions reference another out-of-service facility
-                desc_lower = desc.lower()
-                this_id = f"{(f.get('type') or '').lower()} {f.get('id') or ''}"
-                for oos_id in out_of_service_ids:
-                    if oos_id in desc_lower and oos_id != this_id:
-                        line += (
-                            f"\n  WARNING: These instructions reference "
-                            f"{oos_id} which is ALSO out of service."
-                        )
-                        break
-
         facility_lines.append(line)
+
+    if len(operational) > 6:
+        by_type = {}
+        for f in operational:
+            ftype = f.get("type", "UNKNOWN")
+            by_type[ftype] = by_type.get(ftype, 0) + 1
+        parts = [f"{count} {type_labels.get(t, t.lower())}(s)"
+                 for t, count in sorted(by_type.items())]
+        facility_lines.append(f"- {', '.join(parts)} operational")
+    else:
+        for f in operational:
+            name = f.get("name") or f.get("short_name") or ""
+            facility_lines.append(f"- {f['type']} \"{name}\": OPERATIONAL")
 
     facilities_block = "\n".join(facility_lines) if facility_lines else "(none)"
 
@@ -422,18 +334,19 @@ def _build_station_prompt(station_name, station_facilities, system_stats,
         service_block = "(none)"
 
     prompt = (
-        f"I rely on escalators and elevators and I'm about to travel through {station_name} "
-        f"station. Give me a quick travel briefing based on this data.\n\n"
-        f"Elevators: {n_elevators} ({elevators_out} out) | "
-        f"Escalators: {n_escalators} ({n_out - elevators_out} out)\n\n"
+        f"I rely on escalators and elevators and I'm about to travel through "
+        f"{station_name} station. Give me a quick travel briefing based on "
+        f"this data.\n\n"
+        f"{wheelchair_line}"
+        f"{summary_line}\n\n"
         f"Facilities:\n{facilities_block}\n\n"
         f"Service alerts:\n{service_block}\n\n"
-        f"In one short paragraph (3-5 sentences), tell me:\n"
-        f"1. Whether I can get from street to platform by elevator right now.\n"
-        f"2. If not, what exactly I should do instead — use specific stop names, "
-        f"bus routes, and distances from the MBTA instructions above. If any "
-        f"instructions have a WARNING, skip them and use a working alternative.\n"
-        f"3. Any service disruptions (shuttles, closures) that affect my trip.\n\n"
+        f"In one short paragraph (1-3 sentences), tell me:\n"
+        f"1. Whether I can get from street to platform accessibly right now.\n"
+        f"2. If not, what I should do instead — use specific details from "
+        f"the MBTA instructions above.\n"
+        f"In another short paragraph (1-2 sentences), tell me:\n"
+        f"1. Any service disruptions that affect my trip.\n\n"
         f"Only use the data above. Write as if talking directly to me. "
         f"Start with the key information immediately — no greeting or preamble."
     )
@@ -451,39 +364,22 @@ def generate_station_report(station_id, facilities, stations):
                 station_facilities.append(f)
                 station_name = f.get("station_name", station_id)
 
-        # Compute system-wide stats
-        total_stations = len(stations)
-        stations_with_outages = sum(
-            1 for s in stations if (s.get("n_out_of_service") or 0) > 0
-        )
-        total_facilities = len(facilities)
-        total_out_of_service = sum(
-            1 for f in facilities.values() if f.get("status") == "out_of_service"
-        )
-        system_stats = {
-            "total_stations": total_stations,
-            "stations_with_outages": stations_with_outages,
-            "total_facilities": total_facilities,
-            "total_out_of_service": total_out_of_service,
-        }
+        # Look up wheelchair_boarding from stations list
+        wheelchair_boarding = 0
+        for s in stations:
+            if s.get("id") == station_id:
+                wheelchair_boarding = s.get("wheelchair_boarding", 0)
+                break
 
         # Fetch service alerts (shuttles, delays, etc.) for routes through this station
         service_alerts = fetch_route_alerts(station_id)
 
         prompt = _build_station_prompt(
-            station_name, station_facilities, system_stats, service_alerts
+            station_name, station_facilities, service_alerts=service_alerts,
+            wheelchair_boarding=wheelchair_boarding,
         )
         return _query_ollama(prompt)
     except Exception as e:
         return f"__error__: {e}"
 
 
-if __name__ == "__main__":
-    print("Fetching MBTA accessibility data...\n")
-    facilities = build_accessibility_status()
-    outages = summarize_status(facilities)
-
-    # The facilities dict can be used for:
-    # - Shiny dashboard display
-    # - JSON API response
-    # - Database storage for historical tracking
