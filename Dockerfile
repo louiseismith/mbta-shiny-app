@@ -5,7 +5,7 @@
 #
 # Run:
 #   docker run -p 3838:3838 -e MBTA_API_KEY=your_key_here mbta-tracker
-#   Then open http://localhost:3838/app/
+#   Then open http://localhost:3838/
 #
 # AI Report (Ollama):
 #   The AI report feature calls http://localhost:11434 (hardcoded in the Python script).
@@ -36,8 +36,11 @@ RUN R -e "install.packages(c('leaflet', 'dplyr', 'reticulate'), repos='https://c
 RUN python3 -m venv /srv/.venv \
     && /srv/.venv/bin/pip install --no-cache-dir requests python-dotenv
 
-# Copy app source into Shiny Server's default app root
+# Copy app source
 COPY . /srv/shiny-server/app/
 
-# Shiny Server listens on 3838 by default; CMD is inherited from rocker/shiny
 EXPOSE 3838
+
+# Run the app directly (bypasses Shiny Server's multi-app routing so the app
+# is served at / rather than /app/)
+CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app', host='0.0.0.0', port=3838)"]

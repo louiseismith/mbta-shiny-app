@@ -11,7 +11,8 @@ library(shiny)
 library(leaflet)
 library(dplyr)
 library(reticulate)
-use_virtualenv(file.path(getwd(), "..", "..", ".venv"), required = TRUE)
+venv_path = file.path(getwd(), "..", "..", ".venv")
+if (dir.exists(venv_path)) use_virtualenv(venv_path, required = TRUE)
 
 ## 0.2 Load API key ####################################
 
