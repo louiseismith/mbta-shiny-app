@@ -1,0 +1,43 @@
+# MBTA Accessibility Tracker — Shiny App
+# ----------------------------------------
+# Build:
+#   docker build -t mbta-tracker .
+#
+# Run:
+#   docker run -p 3838:3838 -e MBTA_API_KEY=your_key_here mbta-tracker
+#   Then open http://localhost:3838/app/
+#
+# AI Report (Ollama):
+#   The AI report feature calls http://localhost:11434 (hardcoded in the Python script).
+#   Inside a container "localhost" refers to the container itself, not your host machine.
+#
+#   Linux — add --network=host to share the host's network:
+#     docker run --network=host -e MBTA_API_KEY=your_key_here mbta-tracker
+#
+#   Mac / Windows — Ollama is not reachable from inside the container without
+#   code changes; the AI report panel will show "unavailable" but the rest of
+#   the app works fine.
+
+FROM rocker/shiny:latest
+
+# System dependencies needed by reticulate and Python venv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# R packages (shiny is already in rocker/shiny)
+RUN R -e "install.packages(c('leaflet', 'dplyr', 'reticulate'), repos='https://cloud.r-project.org')"
+
+# Python virtualenv
+# app.R resolves the venv as: file.path(getwd(), "..", "..", ".venv")
+# Shiny Server sets getwd() to /srv/shiny-server/app, so ../../.venv == /srv/.venv
+RUN python3 -m venv /srv/.venv \
+    && /srv/.venv/bin/pip install --no-cache-dir requests python-dotenv
+
+# Copy app source into Shiny Server's default app root
+COPY . /srv/shiny-server/app/
+
+# Shiny Server listens on 3838 by default; CMD is inherited from rocker/shiny
+EXPOSE 3838
