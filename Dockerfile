@@ -28,7 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # R packages (shiny is already in rocker/shiny)
-RUN R -e "install.packages(c('leaflet', 'dplyr', 'reticulate'), repos='https://cloud.r-project.org')"
+# install2.r comes with rocker images and exits non-zero on failure,
+# so a bad install breaks the build immediately rather than at runtime.
+RUN install2.r --error --ncpus -1 leaflet dplyr reticulate
 
 # Python virtualenv
 # app.R resolves the venv as: file.path(getwd(), "..", "..", ".venv")
