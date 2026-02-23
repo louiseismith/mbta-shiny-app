@@ -9,6 +9,14 @@
     "content_category": null,
     "has_parameters": false
   },
+  "python": {
+    "version": "3.12.12",
+    "package_manager": {
+      "name": "pip",
+      "version": "24.3.1",
+      "package_file": "requirements.txt"
+    }
+  },
   "packages": {
     "DBI": {
       "Source": "CRAN",
