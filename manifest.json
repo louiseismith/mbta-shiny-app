@@ -2206,9 +2206,6 @@
     },
     "run_app.R": {
       "checksum": "f348b78a412b19a9dc1f5f66ae8f6a10"
-    },
-    "test_prompt.py": {
-      "checksum": "dfcf1f22c633dcdeaf5c89277e1ed326"
     }
   },
   "users": null
