@@ -2180,6 +2180,9 @@
     ".dockerignore": {
       "checksum": "8afbc10c4c581442ba5e542934d4e1ed"
     },
+    ".github/workflows/deploy.yml": {
+      "checksum": "189ecff5efca0acea2305235cf0df1a7"
+    },
     "accessibility_tracker_prototype.py": {
       "checksum": "663861b8d304c848b6bd46a36fd3f71c"
     },
