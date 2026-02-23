@@ -1,6 +1,6 @@
 # MBTA Accessibility Tracker — Shiny App
 
-Real-time accessibility status for the Boston MBTA. Search for or click a station on the map to see elevator, escalator, ramp, and portable lift details alongside an AI-generated travel briefing.
+Real-time accessibility status for the Boston MBTA. Check individual stations or plan a multi-stop trip to see elevator, escalator, ramp, and portable lift status alongside an AI-generated travel briefing.
 
 ## Table of Contents
 
@@ -18,10 +18,8 @@ Real-time accessibility status for the Boston MBTA. Search for or click a statio
 - **MBTA API key** in a `.env` file: `MBTA_API_KEY=your_key`.
   The app looks for `.env` in the app directory, then in parent directories.
   Get a key at the [MBTA Developer Portal](https://api-v3.mbta.com/).
-- **Ollama** (optional, for AI reports): install from [ollama.com](https://ollama.com/) and pull the Gemma 3 12B model:
-  ```bash
-  ollama pull gemma3:12b
-  ```
+- **Ollama API key** (optional, for AI reports): `OLLAMA_API_KEY=your_key` in the same `.env` file.
+  The app degrades gracefully if unavailable — everything works except the AI report shows a fallback message.
 
 ## Setup
 
@@ -31,11 +29,11 @@ Real-time accessibility status for the Boston MBTA. Search for or click a statio
   uv pip install requests python-dotenv
   ```
   Or let `run_app.R` try to install them with `uv` when you run the app.
-- **API key:** Create a `.env` file in the app directory (the folder with `app.R`) with:
+- **API keys:** Create a `.env` file in the app directory (the folder with `app.R`) with:
   ```
   MBTA_API_KEY=your_key_here
+  OLLAMA_API_KEY=your_key_here
   ```
-- **Ollama:** Make sure the Ollama server is running (`ollama serve`, or it may already be running as a background service). The app degrades gracefully if Ollama is unavailable — everything works except the AI report box shows a fallback message.
 
 ## How to run
 
@@ -52,10 +50,9 @@ Or in RStudio: set the working directory to that folder, then open and **Source*
 ## What it does
 
 - **Data:** Fetches elevators, escalators, ramps, portable boarding lifts, and accessibility alerts from the MBTA API via `accessibility_tracker_prototype.py`.
-- **Map:** Stations on a light CartoDB Positron basemap; marker color = all operational (green), some outages (orange), or all out (red).
-- **Station search:** Type-ahead search bar in the sidebar to quickly find and zoom to any station.
-- **Sidebar:** Select a station (via map click or search) to see facility status cards. Stations flagged as permanently inaccessible to wheelchair users show a warning.
-- **AI report:** When a station is selected, an AI-generated accessibility briefing appears above the facility cards. It summarizes what's working, what's not, MBTA-provided alternative routing, and any service disruptions (shuttles, suspensions, etc.) on lines through that station. Requires Ollama with the Gemma 3 12B model.
+- **Map:** Stations on a light CartoDB Positron basemap. Marker color and symbol indicate status: ✓ all operational (green), ! some outages (orange), ✗ all out (red). Click a marker to select a station.
+- **Station tab:** Search or click a station to see facility status cards. Stations flagged as permanently inaccessible to wheelchair users show a warning. An AI-generated accessibility briefing summarizes what's working, what's not, MBTA-provided alternative routing, and any service disruptions on lines through that station.
+- **Trip Check tab:** Build an ordered list of stations to check an entire planned trip at once. Select which facility types you can use (elevator, escalator, ramp, portable lift), then add stations via the search bar or by clicking directly on the map. Each station shows a per-facility status and any available alternate routing. An overall verdict banner summarizes whether the trip is clear, has partial outages, or is blocked.
 
 ## Files
 
@@ -64,3 +61,6 @@ Or in RStudio: set the working directory to that folder, then open and **Source*
 | `app.R` | Shiny app (UI + server) |
 | `run_app.R` | Launcher script; installs missing R packages |
 | `accessibility_tracker_prototype.py` | MBTA API queries + AI report generation |
+| `requirements.txt` | Python package dependencies |
+| `manifest.json` | Posit Connect deployment manifest |
+| `.github/workflows/deploy.yml` | GitHub Actions workflow for Posit Connect deployment |
