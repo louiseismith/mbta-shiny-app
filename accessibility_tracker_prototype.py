@@ -193,19 +193,24 @@ def get_data_for_app():
 
 
 def _query_ollama(prompt, model="gemma3:12b"):
-    """Send a prompt to a local Ollama instance and return the response text."""
+    """Send a prompt to Ollama Cloud and return the response text."""
+    OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
     resp = requests.post(
-        "http://localhost:11434/api/generate",
+        "https://ollama.com/api/chat",
+        headers={
+            "Authorization": f"Bearer {OLLAMA_API_KEY}",
+            "Content-Type": "application/json",
+        },
         json={
             "model": model,
-            "prompt": prompt,
+            "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "options": {"num_predict": 300},
         },
         timeout=60,
     )
     resp.raise_for_status()
-    return resp.json()["response"]
+    return resp.json()["message"]["content"]
 
 
 def _format_duration(iso_timestamp):
