@@ -93,7 +93,8 @@
         "Maintainer": "Brian Ripley <Brian.Ripley@R-project.org>",
         "Repository": "CRAN",
         "Date/Publication": "2025-02-28 17:44:52 UTC",
-        "Built": "R 4.5.1; aarch64-apple-darwin20; 2025-06-14 01:29:47 UTC; unix"
+        "Built": "R 4.5.0; aarch64-apple-darwin20; 2025-03-31 21:42:43 UTC; unix",
+        "Archs": "MASS.so.dSYM"
       }
     },
     "Matrix": {
@@ -2180,10 +2181,10 @@
       "checksum": "8afbc10c4c581442ba5e542934d4e1ed"
     },
     "accessibility_tracker_prototype.py": {
-      "checksum": "37f6b837aeda776eb9fb06d518ed7ef1"
+      "checksum": "663861b8d304c848b6bd46a36fd3f71c"
     },
     "app.R": {
-      "checksum": "0de63ad48f9b9f02f9677197c1025160"
+      "checksum": "77dc12aee41912c11f71bc68d3892288"
     },
     "cursor_shiny_app_creation.md": {
       "checksum": "b5792f1d78c2169bdd02981c84651896"
@@ -2192,10 +2193,13 @@
       "checksum": "838263ef00f5f54ee97ac45d7ab3dbc6"
     },
     "Dockerfile": {
-      "checksum": "72b5f922083152c3537a680b11c06e93"
+      "checksum": "747db7591b720a53c2b261e711b93f7a"
     },
     "README.md": {
       "checksum": "61274b3e7261c15e0109220dd33b0994"
+    },
+    "requirements.txt": {
+      "checksum": "0dc5e44bdbfbac5c7d537af3c951bd79"
     },
     "run_app.R": {
       "checksum": "f348b78a412b19a9dc1f5f66ae8f6a10"

@@ -111,6 +111,18 @@ color_ok = "#5cb85c"
 color_warn = "#f0ad4e"
 color_out = "#d9534f"
 
+# Build one legend row: circle marker icon + label
+legend_item = function(color, symbol, label) {
+  paste0(
+    '<div style="display:flex;align-items:center;margin-top:4px;">',
+    '<div style="width:18px;height:18px;border-radius:50%;background:', color,
+    ';border:1.5px solid #bbb;',
+    'display:inline-flex;align-items:center;justify-content:center;',
+    'margin-right:6px;font-size:10px;font-weight:bold;color:white;flex-shrink:0;">',
+    symbol, '</div>', label, '</div>'
+  )
+}
+
 # Human-readable duration from an ISO timestamp to now
 format_duration = function(iso_timestamp) {
   if (is.null(iso_timestamp) || is.na(iso_timestamp) || iso_timestamp == "") return(NA_character_)
@@ -172,7 +184,7 @@ ui = fluidPage(
         font-size: 0.8em;
       }
       .facility-badge-ok {
-        background: var(--color-ok);
+        background: #2e7d32;
         color: white;
         padding: 1px 6px;
         border-radius: 3px;
@@ -185,7 +197,7 @@ ui = fluidPage(
       }
       .facility-time {
         font-size: 0.8em;
-        color: #888;
+        color: #767676;
       }
       .ai-report-box {
         background: #e8f4fd;
@@ -207,26 +219,94 @@ ui = fluidPage(
         font-size: 0.85em;
         margin-bottom: 12px;
       }
+      .trip-verdict {
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        font-size: 0.95em;
+      }
+      .trip-verdict-ok       { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+      .trip-verdict-warn     { background: #fcf8e3; color: #8a6d3b; border: 1px solid #faebcc; }
+      .trip-verdict-blocked  { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+      .trip-station-card {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        font-size: 0.9em;
+      }
+      .trip-station-ok      { border-left: 4px solid var(--color-ok); }
+      .trip-station-warn    { border-left: 4px solid var(--color-warn); }
+      .trip-station-blocked { border-left: 4px solid var(--color-out); }
+      .trip-station-nodata  { border-left: 4px solid #aaa; }
+      .trip-station-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .trip-station-name   { font-weight: bold; }
+      .trip-status-text    { color: #767676; font-size: 0.82em; }
+      .trip-out-detail     { margin-top: 4px; font-size: 0.85em; color: #555; }
+      .trip-alt-text       { color: #004085; font-style: italic; margin-top: 2px; }
+      .trip-perm-warning   { color: var(--color-out); font-size: 0.85em; margin-top: 4px; }
+      .trip-list-controls  { display: flex; gap: 4px; margin-top: 4px; margin-bottom: 8px; }
+      #trip_needs .shiny-options-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: -4px; }
+      #trip_needs .checkbox { margin-top: 2px; margin-bottom: 2px; }
+      #trip_needs label { font-size: 0.88em; }
+      .trip-results        { max-height: 45vh; overflow-y: auto; }
     "))
   ),
   titlePanel("MBTA Accessibility Tracker"),
   sidebarLayout(
     sidebarPanel(
-      selectizeInput("station_search", "Find a station:",
-        choices = NULL, options = list(placeholder = "Type a station name…")
-      ),
       p(strong("System summary:"), textOutput("summary", inline = TRUE)),
-      hr(),
-      uiOutput("station_title"),
-      uiOutput("ai_report"),
-      div(
-        class = "facility-cards",
-        uiOutput("station_facilities")
+      tabsetPanel(id = "sidebar_tabs",
+        # --- Tab 1: single-station view ---
+        tabPanel("Station",
+          br(),
+          selectizeInput("station_search", "Find a station:",
+            choices = NULL, options = list(placeholder = "Type a station name…")
+          ),
+          uiOutput("station_title"),
+          uiOutput("ai_report"),
+          div(class = "facility-cards", uiOutput("station_facilities"))
+        ),
+        # --- Tab 2: trip checker ---
+        tabPanel("Trip Check",
+          br(),
+          checkboxGroupInput("trip_needs", "I can use:",
+            choices = c(
+              "Elevator"      = "ELEVATOR",
+              "Escalator"     = "ESCALATOR",
+              "Ramp"          = "RAMP",
+              "Portable lift" = "PORTABLE_BOARDING_LIFT"
+            ),
+            selected = c("ELEVATOR", "ESCALATOR", "RAMP", "PORTABLE_BOARDING_LIFT")
+          ),
+          hr(),
+          selectizeInput("trip_add_station", "Add a station:",
+            choices = NULL, options = list(placeholder = "Type a station name…")
+          ),
+          actionButton("trip_add_btn", "Add to trip", class = "btn-primary btn-sm"),
+          br(), br(),
+          selectInput("trip_station_list", "Your trip (in order):",
+            choices = character(0), size = 5, selectize = FALSE, width = "100%"
+          ),
+          div(class = "trip-list-controls",
+            actionButton("trip_up_btn",     "\u2191 Up",     class = "btn-default btn-xs"),
+            actionButton("trip_down_btn",   "\u2193 Down",   class = "btn-default btn-xs"),
+            actionButton("trip_remove_btn", "\u00d7 Remove", class = "btn-danger btn-xs")
+          ),
+          hr(),
+          div(class = "trip-results", uiOutput("trip_results"))
+        )
       ),
       width = 4
     ),
     mainPanel(
-      leafletOutput("map", height = "600px"),
+      leafletOutput("map", height = "calc(100vh - 80px)"),
       width = 8
     )
   )
@@ -304,6 +384,11 @@ server = function(input, output, session) {
       (st$n_operational %||% 0) == 0 ~ "all_out",
       TRUE ~ "some_out"
     )
+    st$symbol = dplyr::case_when(
+      st$status_group == "all_ok"  ~ "\u2713",
+      st$status_group == "all_out" ~ "\u2717",
+      TRUE ~ "!"
+    )
 
     m = leaflet(st) %>%
       addProviderTiles("CartoDB.Positron") %>%
@@ -311,27 +396,249 @@ server = function(input, output, session) {
       addCircleMarkers(
         lng = ~lon,
         lat = ~lat,
-        layerId = ~id,
         radius = 10,
-        color = "white",
-        weight = 2,
+        color = "#bbb",
+        weight = 1.5,
         fillColor = ~pal(status_group),
         fillOpacity = 0.85,
+        label = ~symbol,
+        labelOptions = labelOptions(
+          permanent = TRUE,
+          direction = "center",
+          textOnly = TRUE,
+          style = list(
+            "color" = "white",
+            "font-weight" = "bold",
+            "font-size" = "11px"
+          )
+        )
+      ) %>%
+      addCircleMarkers(
+        lng = ~lon,
+        lat = ~lat,
+        layerId = ~id,
+        radius = 10,
+        color = "transparent",
+        weight = 0,
+        fillColor = "transparent",
+        fillOpacity = 0,
         label = ~name
       ) %>%
-      addLegend(
-        "bottomright",
-        colors = c(color_ok, color_warn, color_out),
-        labels = c("All operational", "Some outages", "All out"),
-        title = "Status"
+      addControl(
+        position = "bottomright",
+        html = paste0(
+          '<div class="info legend" style="background:white;padding:8px 10px;border-radius:4px;line-height:1.6;font-size:0.85em;">',
+          '<strong>Status</strong><br>',
+          legend_item(color_ok,   "\u2713", "All operational"),
+          legend_item(color_warn, "!",      "Some outages"),
+          legend_item(color_out,  "\u2717", "All out"),
+          '</div>'
+        )
       )
     m
   })
 
   observeEvent(input$map_marker_click, {
     id = input$map_marker_click$id
-    selected_station(id)
-    updateSelectizeInput(session, "station_search", selected = id)
+    if (identical(input$sidebar_tabs, "Trip Check")) {
+      current = trip_stations()
+      if (!(id %in% current)) trip_stations(c(current, id))
+    } else {
+      selected_station(id)
+      updateSelectizeInput(session, "station_search", selected = id)
+    }
+  })
+
+  # --- Trip checker ---
+
+  trip_stations = reactiveVal(character(0))
+
+  # Populate the trip "add station" dropdown from the same data as the map
+  observe({
+    d = app_data()
+    stations = d$stations
+    if (length(stations) == 0) return()
+    choices = vapply(stations, function(s) s$id, character(1))
+    names(choices) = vapply(stations, function(s) s$name %||% s$id, character(1))
+    choices = choices[order(names(choices))]
+    updateSelectizeInput(session, "trip_add_station", choices = c(Choose = "", choices), server = TRUE)
+  })
+
+  # Add button — append station to list (no duplicates)
+  observeEvent(input$trip_add_btn, {
+    id = input$trip_add_station
+    if (is.null(id) || id == "") return()
+    current = trip_stations()
+    if (id %in% current) return()
+    trip_stations(c(current, id))
+  })
+
+  # Remove button — drop selected station
+  observeEvent(input$trip_remove_btn, {
+    sel = input$trip_station_list
+    if (is.null(sel) || sel == "") return()
+    current = trip_stations()
+    trip_stations(current[current != sel])
+  })
+
+  # Move up
+  observeEvent(input$trip_up_btn, {
+    sel = input$trip_station_list
+    if (is.null(sel) || sel == "") return()
+    current = trip_stations()
+    idx = which(current == sel)
+    if (length(idx) == 0 || idx == 1) return()
+    current[c(idx - 1, idx)] = current[c(idx, idx - 1)]
+    trip_stations(current)
+  })
+
+  # Move down
+  observeEvent(input$trip_down_btn, {
+    sel = input$trip_station_list
+    if (is.null(sel) || sel == "") return()
+    current = trip_stations()
+    idx = which(current == sel)
+    if (length(idx) == 0 || idx == length(current)) return()
+    current[c(idx, idx + 1)] = current[c(idx + 1, idx)]
+    trip_stations(current)
+  })
+
+  # Keep the selectInput display in sync with trip_stations()
+  observe({
+    ids = trip_stations()
+    if (length(ids) == 0) {
+      updateSelectInput(session, "trip_station_list", choices = character(0))
+      return()
+    }
+    d = app_data()
+    name_lookup = setNames(
+      vapply(d$stations, function(s) s$name %||% s$id, character(1)),
+      vapply(d$stations, function(s) s$id, character(1))
+    )
+    choices = setNames(ids, vapply(ids, function(i) name_lookup[[i]] %||% i, character(1)))
+    sel = isolate(input$trip_station_list)
+    keep_sel = if (!is.null(sel) && sel %in% ids) sel else ids[1]
+    updateSelectInput(session, "trip_station_list", choices = choices, selected = keep_sel)
+  })
+
+  # Compute per-station trip check results reactively
+  trip_check_results = reactive({
+    ids = trip_stations()
+    needs = input$trip_needs
+    if (length(ids) == 0 || is.null(needs) || length(needs) == 0) return(NULL)
+
+    d = app_data()
+    fac = d$facilities
+    stations = d$stations
+
+    name_lookup = setNames(
+      vapply(stations, function(s) s$name %||% s$id, character(1)),
+      vapply(stations, function(s) s$id, character(1))
+    )
+    wb_lookup = setNames(
+      vapply(stations, function(s) as.integer(s$wheelchair_boarding %||% 0L), integer(1)),
+      vapply(stations, function(s) s$id, character(1))
+    )
+
+    lapply(ids, function(sid) {
+      # Facilities at this station that match the user's stated needs
+      station_fac = Filter(function(f) {
+        identical(f$stop_id, sid) && (f$type %||% "") %in% needs
+      }, fac)
+
+      n_total = length(station_fac)
+      n_op    = sum(vapply(station_fac, function(f) identical(f$status, "operational"), logical(1)))
+      n_out   = n_total - n_op
+
+      status = if (n_total == 0)   "no_data"
+               else if (n_op > 0)  "ok"
+               else                "blocked"
+
+      # Partial outage = has some out but at least one operational
+      is_warn = (status == "ok" && n_out > 0)
+
+      out_fac = Filter(function(f) identical(f$status, "out_of_service"), station_fac)
+
+      wb = if (sid %in% names(wb_lookup)) as.integer(wb_lookup[[sid]]) else 0L
+
+      list(
+        id = sid, name = name_lookup[[sid]] %||% sid,
+        status = status, is_warn = is_warn,
+        n_total = n_total, n_operational = n_op, n_out = n_out,
+        out_facilities = out_fac,
+        wheelchair_boarding = wb
+      )
+    })
+  })
+
+  output$trip_results = renderUI({
+    results = trip_check_results()
+    if (is.null(results)) {
+      return(p(em("Add stations above to check your trip.")))
+    }
+
+    statuses = vapply(results, function(r) r$status, character(1))
+    warns    = vapply(results, function(r) r$is_warn,  logical(1))
+    n_blocked = sum(statuses == "blocked")
+    n_warn    = sum(warns)
+
+    verdict_class = if (n_blocked > 0) "trip-verdict-blocked"
+                    else if (n_warn > 0) "trip-verdict-warn"
+                    else "trip-verdict-ok"
+    verdict_text = if (n_blocked > 0)
+      paste0("\u2717 ", n_blocked, " station(s) have no operational facilities for your needs")
+    else if (n_warn > 0)
+      paste0("\u26a0 ", n_warn, " station(s) have partial outages")
+    else
+      "\u2713 Trip looks clear"
+
+    station_cards = lapply(results, function(r) {
+      card_class = if (r$status == "blocked")  "trip-station-blocked"
+                   else if (r$is_warn)          "trip-station-warn"
+                   else if (r$status == "ok")   "trip-station-ok"
+                   else                          "trip-station-nodata"
+
+      icon = if (r$status == "blocked") "\u2717"
+             else if (r$is_warn)         "\u26a0"
+             else if (r$status == "ok")  "\u2713"
+             else                         "?"
+
+      status_text = if (r$status == "blocked") "No operational facilities for your needs"
+                    else if (r$status == "no_data") "No facility data"
+                    else if (r$is_warn) paste0(r$n_operational, "/", r$n_total, " needed facilities operational")
+                    else paste0("All ", r$n_total, " needed facilities operational")
+
+      perm_warning = if (identical(r$wheelchair_boarding, 2L))
+        tags$div(class = "trip-perm-warning", "\u26a0 Permanently inaccessible to wheelchair users")
+      else NULL
+
+      out_details = if (length(r$out_facilities) > 0) {
+        tagList(lapply(r$out_facilities, function(f) {
+          type_lbl = facility_type_label(as.character(f$type %||% ""))
+          fname    = as.character(f$name %||% f$short_name %||% "")
+          alt      = if (!is.null(f$alert) && !is.null(f$alert$description))
+                       as.character(f$alert$description) else NULL
+          tags$div(class = "trip-out-detail",
+            tags$span(paste0(type_lbl, if (nchar(fname) > 0) paste0(' "', fname, '"') else "", " — out of service")),
+            if (!is.null(alt)) tags$div(class = "trip-alt-text", alt) else NULL
+          )
+        }))
+      } else NULL
+
+      tags$div(class = paste("trip-station-card", card_class),
+        tags$div(class = "trip-station-header",
+          tags$span(class = "trip-station-name", paste0(icon, " ", r$name)),
+          tags$span(class = "trip-status-text", status_text)
+        ),
+        perm_warning,
+        out_details
+      )
+    })
+
+    tagList(
+      tags$div(class = paste("trip-verdict", verdict_class), verdict_text),
+      tagList(station_cards)
+    )
   })
 
   output$station_title = renderUI({
