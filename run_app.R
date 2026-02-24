@@ -62,12 +62,16 @@ use_virtualenv(venv_path, required = TRUE)
 
 # Verify Python packages are available
 py_ok = tryCatch({
-  stopifnot(py_module_available("requests"), py_module_available("dotenv"))
+  stopifnot(
+    py_module_available("requests"),
+    py_module_available("dotenv"),
+    py_module_available("psycopg2")
+  )
   TRUE
 }, error = function(e) FALSE)
 
 if (!py_ok) {
-  stop("Missing Python packages. Install with: uv pip install requests python-dotenv")
+  stop("Missing Python packages. Install with: uv pip install requests python-dotenv psycopg2-binary")
 }
 
 shiny::runApp(app_path)

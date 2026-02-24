@@ -3,3 +3,4 @@
 .git
 *.md
 test_prompt.py
+data/

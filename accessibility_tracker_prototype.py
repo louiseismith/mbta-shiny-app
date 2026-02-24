@@ -1,4 +1,5 @@
 import os
+import psycopg2
 import requests
 from dotenv import load_dotenv
 from datetime import datetime
@@ -6,6 +7,67 @@ from datetime import datetime
 load_dotenv()
 
 BASE_URL = "https://api-v3.mbta.com"
+
+
+def _get_supabase_conn():
+    """Open a Postgres connection from SUPABASE_* env vars. Returns None if not configured."""
+    host = os.getenv("SUPABASE_HOST")
+    if not host:
+        return None
+    return psycopg2.connect(
+        host=host,
+        port=int(os.getenv("SUPABASE_PORT", "5432")),
+        dbname=os.getenv("SUPABASE_DB", "postgres"),
+        user=os.getenv("SUPABASE_USER", "postgres"),
+        password=os.getenv("SUPABASE_PASSWORD", ""),
+        connect_timeout=10,
+        sslmode="require",
+    )
+
+
+def _log_facility_statuses(facilities):
+    """Write a row for any facility whose status has changed since the last snapshot."""
+    conn = _get_supabase_conn()
+    if conn is None:
+        return  # Supabase not configured — skip silently
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Last recorded status per facility
+                cur.execute("""
+                    SELECT facility_id, status FROM outage_log
+                    WHERE id IN (
+                        SELECT MAX(id) FROM outage_log GROUP BY facility_id
+                    )
+                """)
+                last_status = {row[0]: row[1] for row in cur.fetchall()}
+
+                now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+                to_insert = []
+                for fid, f in facilities.items():
+                    current = f.get("status", "operational")
+                    if last_status.get(fid) != current:
+                        alert = f.get("alert") or {}
+                        to_insert.append((
+                            now, fid,
+                            f.get("type"),
+                            f.get("name") or f.get("short_name"),
+                            f.get("stop_id"),
+                            f.get("station_name"),
+                            current,
+                            alert.get("id"),
+                            alert.get("outage_start"),
+                        ))
+
+                if to_insert:
+                    cur.executemany("""
+                        INSERT INTO outage_log
+                            (logged_at, facility_id, facility_type, facility_name,
+                             stop_id, station_name, status, alert_id, outage_start)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, to_insert)
+    finally:
+        conn.close()
 API_KEY = os.getenv("MBTA_API_KEY")
 
 headers = {}
@@ -188,6 +250,11 @@ def get_data_for_app():
             "n_out_of_service": counts["out_of_service"],
             "wheelchair_boarding": info.get("wheelchair_boarding", 0),
         })
+
+    try:
+        _log_facility_statuses(facilities)
+    except Exception:
+        pass  # Never let logging break the app
 
     return {"facilities": facilities, "stations": stations}
 
