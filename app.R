@@ -308,7 +308,7 @@ ui = fluidPage(
         tabPanel("Station",
           br(),
           selectizeInput("station_search", "Find a station:",
-            choices = NULL, options = list(placeholder = "Type a station name…")
+            choices = NULL, options = list(placeholder = "Type a station name…", dropdownParent = "body")
           ),
           uiOutput("station_title"),
           uiOutput("ai_report"),
@@ -328,7 +328,7 @@ ui = fluidPage(
             ),
             div(id = "trip-add-row",
               selectizeInput("trip_add_station", NULL,
-                choices = NULL, options = list(placeholder = "Type a station name…")
+                choices = NULL, options = list(placeholder = "Type a station name…", dropdownParent = "body")
               ),
               actionButton("trip_add_btn", "Add", class = "btn-primary btn-sm")
             ),
