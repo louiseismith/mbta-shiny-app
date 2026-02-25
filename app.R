@@ -811,7 +811,7 @@ server = function(input, output, session) {
     # Schedule the slow AI call AFTER the current outputs reach the browser
     session$onFlushed(function() {
       report = tryCatch(
-        generate_station_report(id, d$facilities, d$stations),
+        generate_station_report(id, d$facilities, d$stations, d$service_alerts %||% list()),
         error = function(e) paste0("__error__: ", e$message)
       )
       ai_report_text(report)

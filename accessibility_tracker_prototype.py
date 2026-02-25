@@ -102,26 +102,30 @@ def fetch_accessibility_alerts():
     return response.json()
 
 
-def fetch_route_alerts(stop_id):
+def fetch_route_alerts(stop_id, route_ids=None):
     """Fetch all non-facility alerts for the routes serving a station.
 
     Returns a list of alert dicts (header, effect, description) for
     service-level alerts (shuttles, suspensions, etc.) that affect routes
     passing through the given stop.  Facility-specific alerts (elevator/
     escalator closures) are excluded since they are already tracked separately.
+
+    If route_ids is provided, skips the /routes API call (use when the
+    station_routes cache is available).
     """
-    # 1. Discover which routes serve this stop
-    routes_resp = requests.get(
-        f"{BASE_URL}/routes",
-        headers=headers,
-        params={"filter[stop]": stop_id},
-    )
-    routes_resp.raise_for_status()
-    route_ids = [r["id"] for r in routes_resp.json().get("data", [])]
+    if route_ids is None:
+        # Discover which routes serve this stop via API
+        routes_resp = requests.get(
+            f"{BASE_URL}/routes",
+            headers=headers,
+            params={"filter[stop]": stop_id},
+        )
+        routes_resp.raise_for_status()
+        route_ids = [r["id"] for r in routes_resp.json().get("data", [])]
     if not route_ids:
         return []
 
-    # 2. Fetch alerts for those routes
+    # Fetch alerts for those routes
     alerts_resp = requests.get(
         f"{BASE_URL}/alerts",
         headers=headers,
@@ -318,6 +322,50 @@ def _read_station_routes_from_db():
         conn.close()
 
 
+def _build_service_alerts_by_stop(alerts_data, station_routes):
+    """Map prefetched service-level alerts to the stops they affect.
+
+    Returns {stop_id: [alert_dicts]} built from a single bulk alerts response.
+    For STATION_ISSUE alerts: only mapped to stops explicitly in informed_entity.
+    For all other kept effects: mapped to every stop that serves an affected route.
+    """
+    keep_effects = {
+        "SHUTTLE", "SUSPENSION", "DETOUR", "SERVICE_CHANGE",
+        "STOP_CLOSURE", "STOP_MOVE", "STATION_ISSUE",
+    }
+    # Build route → stop_ids reverse index from the cached station_routes
+    route_to_stops = {}
+    for stop_id, routes in station_routes.items():
+        for r in routes:
+            rid = r["id"]
+            if rid not in route_to_stops:
+                route_to_stops[rid] = set()
+            route_to_stops[rid].add(stop_id)
+
+    result = {}
+    for alert in alerts_data:
+        attr = alert["attributes"]
+        effect = attr.get("effect", "")
+        if effect not in keep_effects:
+            continue
+        entities = attr.get("informed_entity", [])
+        alert_dict = {
+            "header": attr.get("header", ""),
+            "effect": effect,
+            "description": (attr.get("description") or "").strip(),
+        }
+        if effect == "STATION_ISSUE":
+            affected_stops = {e["stop"] for e in entities if "stop" in e}
+        else:
+            affected_routes = {e["route"] for e in entities if "route" in e}
+            affected_stops = set()
+            for rid in affected_routes:
+                affected_stops.update(route_to_stops.get(rid, set()))
+        for sid in affected_stops:
+            result.setdefault(sid, []).append(alert_dict)
+    return result
+
+
 def extract_facility_ids_from_alert(alert):
     """Extract facility IDs from an alert's informed_entity list."""
     facility_ids = []
@@ -424,7 +472,29 @@ def get_data_for_app():
     except Exception:
         pass  # Missing station_routes degrades trip checker but doesn't break the app
 
-    return {"facilities": facilities, "stations": stations, "station_routes": station_routes}
+    # Prefetch all service alerts in one call using the cached route list
+    service_alerts = {}
+    if station_routes:
+        try:
+            all_route_ids = list({r["id"] for routes in station_routes.values() for r in routes})
+            resp = requests.get(
+                f"{BASE_URL}/alerts",
+                headers=headers,
+                params={"filter[route]": ",".join(all_route_ids)},
+            )
+            resp.raise_for_status()
+            service_alerts = _build_service_alerts_by_stop(
+                resp.json().get("data", []), station_routes
+            )
+        except Exception:
+            pass  # Degrades to no service alerts in AI report; doesn't break the app
+
+    return {
+        "facilities": facilities,
+        "stations": stations,
+        "station_routes": station_routes,
+        "service_alerts": service_alerts,
+    }
 
 
 def _query_ollama(prompt, model="gemma3:12b"):
@@ -593,7 +663,7 @@ def _build_station_prompt(station_name, station_facilities,
     return prompt
 
 
-def generate_station_report(station_id, facilities, stations):
+def generate_station_report(station_id, facilities, stations, service_alerts_by_stop=None):
     """Generate an AI report for a station. Called from R via reticulate."""
     try:
         # Collect facilities for this station
@@ -611,8 +681,11 @@ def generate_station_report(station_id, facilities, stations):
                 wheelchair_boarding = s.get("wheelchair_boarding", 0)
                 break
 
-        # Fetch service alerts (shuttles, delays, etc.) for routes through this station
-        service_alerts = fetch_route_alerts(station_id)
+        # Use prefetched service alerts if available, otherwise fall back to API
+        if service_alerts_by_stop is not None:
+            service_alerts = list(service_alerts_by_stop.get(station_id, []))
+        else:
+            service_alerts = fetch_route_alerts(station_id)
 
         prompt = _build_station_prompt(
             station_name, station_facilities, service_alerts=service_alerts,
