@@ -316,8 +316,9 @@ ui = fluidPage(
 
 server = function(input, output, session) {
 
-  # One reactive that fetches data (so we can refresh later if needed)
+  # One reactive that fetches data; invalidateLater triggers background refresh
   app_data = reactive({
+    invalidateLater(300000)  # 5 minutes
     get_app_data()
   })
 
@@ -359,19 +360,30 @@ server = function(input, output, session) {
     paste0(n_stations, " stations; ", n_with_outages, " with at least one outage.")
   })
 
-  # Map: stations as markers; color by outage (CartoDB Positron = light basemap)
+  # Map: render basemap and legend once — no app_data() dependency so zoom/pan are never reset
   output$map = renderLeaflet({
+    leaflet() %>%
+      addProviderTiles("CartoDB.Positron") %>%
+      setView(-71.06, 42.36, zoom = 11) %>%
+      addControl(
+        position = "bottomright",
+        html = paste0(
+          '<div class="info legend" style="background:white;padding:8px 10px;border-radius:4px;line-height:1.6;font-size:0.85em;">',
+          '<strong>Status</strong><br>',
+          legend_item(color_ok,   "\u2713", "All operational"),
+          legend_item(color_warn, "!",      "Some outages"),
+          legend_item(color_out,  "\u2717", "All out"),
+          '</div>'
+        )
+      )
+  })
+
+  # Update markers on each data refresh — preserves zoom/pan position
+  observe({
     d = app_data()
     stations = d$stations
-    if (length(stations) == 0) {
-      return(
-        leaflet() %>%
-          addProviderTiles("CartoDB.Positron") %>%
-          setView(-71.06, 42.36, zoom = 11)
-      )
-    }
+    if (length(stations) == 0) return()
 
-    # Convert to a data frame for easier use
     st = dplyr::bind_rows(lapply(stations, as.data.frame))
 
     pal = leaflet::colorFactor(
@@ -390,9 +402,8 @@ server = function(input, output, session) {
       TRUE ~ "!"
     )
 
-    m = leaflet(st) %>%
-      addProviderTiles("CartoDB.Positron") %>%
-      setView(mean(st$lon, na.rm = TRUE), mean(st$lat, na.rm = TRUE), zoom = 11) %>%
+    leafletProxy("map", data = st) %>%
+      clearMarkers() %>%
       addCircleMarkers(
         lng = ~lon,
         lat = ~lat,
@@ -423,19 +434,7 @@ server = function(input, output, session) {
         fillColor = "transparent",
         fillOpacity = 0,
         label = ~name
-      ) %>%
-      addControl(
-        position = "bottomright",
-        html = paste0(
-          '<div class="info legend" style="background:white;padding:8px 10px;border-radius:4px;line-height:1.6;font-size:0.85em;">',
-          '<strong>Status</strong><br>',
-          legend_item(color_ok,   "\u2713", "All operational"),
-          legend_item(color_warn, "!",      "Some outages"),
-          legend_item(color_out,  "\u2717", "All out"),
-          '</div>'
-        )
       )
-    m
   })
 
   observeEvent(input$map_marker_click, {
