@@ -156,6 +156,168 @@ def fetch_route_alerts(stop_id):
     return service_alerts
 
 
+def fetch_connecting_routes(stop_a, stop_b, route_types=(0, 1, 2), station_routes=None):
+    """Find rapid-transit and commuter-rail routes serving both stop_a and stop_b.
+
+    If station_routes dict is provided (pre-loaded from Supabase), uses local set
+    intersection — no API calls.  Falls back to live API calls if not provided,
+    which is the path used by LLM function-calling tools in Module 08.
+
+    Returns a list of route dicts (id, name, color, text_color, route_type) sorted
+    by route_type then id.  Buses (type 3) and ferries (type 4) are excluded by
+    default so trip results stay focused on scheduled rail service.
+    """
+    if station_routes is not None:
+        def filter_routes(stop_id):
+            return {
+                r["id"]: r for r in station_routes.get(stop_id, [])
+                if r.get("route_type") in route_types
+            }
+        routes_a = filter_routes(stop_a)
+        routes_b = filter_routes(stop_b)
+        shared_ids = set(routes_a.keys()) & set(routes_b.keys())
+        result = [routes_a[rid] for rid in shared_ids]
+        result.sort(key=lambda r: (r.get("route_type", 0), r["id"]))
+        return result
+
+    # Fall back to live API calls (used by LLM function-calling tools in Module 08)
+    def routes_for_stop(stop_id):
+        resp = requests.get(
+            f"{BASE_URL}/routes",
+            headers=headers,
+            params={"filter[stop]": stop_id, "filter[type]": ",".join(str(t) for t in route_types)},
+        )
+        resp.raise_for_status()
+        return {r["id"]: r for r in resp.json().get("data", [])}
+
+    routes_a = routes_for_stop(stop_a)
+    routes_b = routes_for_stop(stop_b)
+
+    shared_ids = set(routes_a.keys()) & set(routes_b.keys())
+    result = []
+    for rid in shared_ids:
+        r = routes_a[rid]
+        attrs = r["attributes"]
+        result.append({
+            "id": rid,
+            "name": attrs.get("long_name") or attrs.get("short_name"),
+            "color": attrs.get("color"),
+            "text_color": attrs.get("text_color"),
+            "route_type": attrs.get("type"),
+        })
+    result.sort(key=lambda r: (r["route_type"], r["id"]))
+    return result
+
+
+def _fetch_station_routes_from_api():
+    """Fetch station→routes mapping from MBTA API.
+
+    Queries all rapid-transit and commuter-rail routes, then fetches stops per route.
+    Returns dict: {stop_id: [{id, name, color, text_color, route_type}]}
+    Makes approximately one API call per route (~25-30 total).
+    """
+    routes_resp = requests.get(
+        f"{BASE_URL}/routes",
+        headers=headers,
+        params={"filter[type]": "0,1,2"},
+    )
+    routes_resp.raise_for_status()
+    routes = routes_resp.json().get("data", [])
+
+    station_routes = {}
+    for route in routes:
+        route_id = route["id"]
+        attrs = route["attributes"]
+        route_info = {
+            "id": route_id,
+            "name": attrs.get("long_name") or attrs.get("short_name"),
+            "color": attrs.get("color"),
+            "text_color": attrs.get("text_color"),
+            "route_type": attrs.get("type"),
+        }
+        stops_resp = requests.get(
+            f"{BASE_URL}/stops",
+            headers=headers,
+            params={"filter[route]": route_id},
+        )
+        stops_resp.raise_for_status()
+        for stop in stops_resp.json().get("data", []):
+            stop_id = stop["id"]
+            if stop_id not in station_routes:
+                station_routes[stop_id] = []
+            station_routes[stop_id].append(route_info)
+
+    return station_routes
+
+
+def sync_station_routes():
+    """Fetch station→route mapping from MBTA API and store in Supabase.
+
+    Intended to run on a schedule from the scraper (daily is sufficient).
+    Truncates and replaces the full station_routes table each run.
+    """
+    data = _fetch_station_routes_from_api()
+    conn = _get_supabase_conn()
+    if conn is None:
+        return
+    try:
+        synced_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("TRUNCATE TABLE station_routes")
+                rows = [
+                    (stop_id, r["id"], r["name"], r["color"], r["text_color"], r["route_type"], synced_at)
+                    for stop_id, routes in data.items()
+                    for r in routes
+                ]
+                if rows:
+                    cur.executemany("""
+                        INSERT INTO station_routes
+                            (stop_id, route_id, route_name, route_color,
+                             route_text_color, route_type, synced_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, rows)
+        print(f"sync_station_routes: {len(rows)} rows written at {synced_at}.")
+    finally:
+        conn.close()
+
+
+def _read_station_routes_from_db():
+    """Read station→routes mapping from Supabase.
+
+    Returns dict: {stop_id: [{id, name, color, text_color, route_type}]}
+    Returns empty dict if Supabase not configured or table is empty.
+    """
+    conn = _get_supabase_conn()
+    if conn is None:
+        return {}
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT stop_id, route_id, route_name, route_color,
+                           route_text_color, route_type
+                    FROM station_routes
+                """)
+                rows = cur.fetchall()
+        result = {}
+        for stop_id, route_id, name, color, text_color, route_type in rows:
+            if stop_id not in result:
+                result[stop_id] = []
+            result[stop_id].append({
+                "id": route_id,
+                "name": name,
+                "color": color,
+                "text_color": text_color,
+                "route_type": route_type,
+            })
+        return result
+    except Exception:
+        return {}
+    finally:
+        conn.close()
+
+
 def extract_facility_ids_from_alert(alert):
     """Extract facility IDs from an alert's informed_entity list."""
     facility_ids = []
@@ -256,7 +418,13 @@ def get_data_for_app():
     except Exception:
         pass  # Never let logging break the app
 
-    return {"facilities": facilities, "stations": stations}
+    station_routes = {}
+    try:
+        station_routes = _read_station_routes_from_db()
+    except Exception:
+        pass  # Missing station_routes degrades trip checker but doesn't break the app
+
+    return {"facilities": facilities, "stations": stations, "station_routes": station_routes}
 
 
 def _query_ollama(prompt, model="gemma3:12b"):

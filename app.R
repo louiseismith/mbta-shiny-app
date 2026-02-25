@@ -154,10 +154,12 @@ ui = fluidPage(
         border: 1px solid #ddd;
         border-radius: 4px;
       }
-      .facility-cards {
-        max-height: 50vh;
+      .well {
         overflow-y: auto;
+        max-height: calc(100vh - 80px);
+        padding: 12px 14px;
       }
+      .facility-cards { }
       .facility-card {
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -223,6 +225,7 @@ ui = fluidPage(
         padding: 8px 12px;
         border-radius: 4px;
         font-weight: bold;
+        margin-top: 8px;
         margin-bottom: 12px;
         font-size: 0.95em;
       }
@@ -252,10 +255,48 @@ ui = fluidPage(
       .trip-alt-text       { color: #004085; font-style: italic; margin-top: 2px; }
       .trip-perm-warning   { color: var(--color-out); font-size: 0.85em; margin-top: 4px; }
       .trip-list-controls  { display: flex; gap: 4px; margin-top: 4px; margin-bottom: 8px; }
+      .trip-connector {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 2px 0;
+      }
+      .trip-connector-line {
+        width: 2px;
+        height: 10px;
+        background: #ccc;
+      }
+      .trip-connector-badges {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 3px 0;
+      }
+      .trip-line-badge {
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.78em;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+      .trip-line-badge-unknown  { background: #888; color: white; }
+      .trip-line-badge-transfer { background: white; color: #555; border: 1px dashed #aaa; }
       #trip_needs .shiny-options-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: -4px; }
       #trip_needs .checkbox { margin-top: 2px; margin-bottom: 2px; }
       #trip_needs label { font-size: 0.88em; }
-      .trip-results        { max-height: 45vh; overflow-y: auto; }
+      .trip-results        { }
+      /* Tighten Bootstrap form-group spacing inside trip checker */
+      #trip-tab-content .form-group { margin-bottom: 6px; }
+      /* Align Add button baseline with the input field */
+      #trip-add-row { display: flex; gap: 6px; align-items: flex-end; }
+      #trip-add-row .form-group { flex: 1; margin-bottom: 0; }
+      #trip-add-row .btn { margin-bottom: 1px; }
+      #trip_station_list { margin-top: 6px; height: 72px; }
+      /* Reduce Bootstrap default 20px gap below tab headers */
+      .well .nav-tabs { margin-bottom: 8px; }
+      /* Consistent 4px gap around controls row */
+      .trip-list-controls { margin-top: 2px; margin-bottom: 4px; }
     "))
   ),
   titlePanel("MBTA Accessibility Tracker"),
@@ -275,32 +316,40 @@ ui = fluidPage(
         ),
         # --- Tab 2: trip checker ---
         tabPanel("Trip Check",
-          br(),
-          checkboxGroupInput("trip_needs", "I can use:",
-            choices = c(
-              "Elevator"      = "ELEVATOR",
-              "Escalator"     = "ESCALATOR",
-              "Ramp"          = "RAMP",
-              "Portable lift" = "PORTABLE_BOARDING_LIFT"
+          div(id = "trip-tab-content",
+            checkboxGroupInput("trip_needs", "I can use:",
+              choices = c(
+                "Elevator"      = "ELEVATOR",
+                "Escalator"     = "ESCALATOR",
+                "Ramp"          = "RAMP",
+                "Portable lift" = "PORTABLE_BOARDING_LIFT"
+              ),
+              selected = c("ELEVATOR", "ESCALATOR", "RAMP", "PORTABLE_BOARDING_LIFT")
             ),
-            selected = c("ELEVATOR", "ESCALATOR", "RAMP", "PORTABLE_BOARDING_LIFT")
-          ),
-          hr(),
-          selectizeInput("trip_add_station", "Add a station:",
-            choices = NULL, options = list(placeholder = "Type a station name…")
-          ),
-          actionButton("trip_add_btn", "Add to trip", class = "btn-primary btn-sm"),
-          br(), br(),
-          selectInput("trip_station_list", "Your trip (in order):",
-            choices = character(0), size = 5, selectize = FALSE, width = "100%"
-          ),
-          div(class = "trip-list-controls",
-            actionButton("trip_up_btn",     "\u2191 Up",     class = "btn-default btn-xs"),
-            actionButton("trip_down_btn",   "\u2193 Down",   class = "btn-default btn-xs"),
-            actionButton("trip_remove_btn", "\u00d7 Remove", class = "btn-danger btn-xs")
-          ),
-          hr(),
-          div(class = "trip-results", uiOutput("trip_results"))
+            div(id = "trip-add-row",
+              selectizeInput("trip_add_station", NULL,
+                choices = NULL, options = list(placeholder = "Type a station name…")
+              ),
+              actionButton("trip_add_btn", "Add", class = "btn-primary btn-sm")
+            ),
+            selectInput("trip_station_list", NULL,
+              choices = character(0), size = 3, selectize = FALSE, width = "100%"
+            ),
+            div(class = "trip-list-controls",
+              actionButton("trip_up_btn",     "\u2191 Up",     class = "btn-default btn-xs"),
+              actionButton("trip_down_btn",   "\u2193 Down",   class = "btn-default btn-xs"),
+              actionButton("trip_remove_btn", "\u00d7 Remove", class = "btn-danger btn-xs")
+            ),
+            div(style = "display:flex;gap:6px;margin-top:2px;margin-bottom:4px;",
+              actionButton("trip_check_btn", "Check Trip",
+                class = "btn-primary btn-sm", style = "flex:1;"
+              ),
+              actionButton("trip_clear_btn", "Clear",
+                class = "btn-default btn-sm"
+              )
+            ),
+            div(class = "trip-results", uiOutput("trip_results"))
+          )
         )
       ),
       width = 4
@@ -520,15 +569,27 @@ server = function(input, output, session) {
     updateSelectInput(session, "trip_station_list", choices = choices, selected = keep_sel)
   })
 
-  # Compute per-station trip check results reactively
-  trip_check_results = reactive({
-    ids = trip_stations()
-    needs = input$trip_needs
+  # Tracks whether trip results should be displayed
+  show_trip_results = reactiveVal(FALSE)
+
+  observeEvent(input$trip_check_btn, { show_trip_results(TRUE) })
+
+  # Clear all stations and hide results
+  observeEvent(input$trip_clear_btn, {
+    trip_stations(character(0))
+    show_trip_results(FALSE)
+  })
+
+  # Compute trip results only when "Check Trip" is pressed
+  trip_check_results = eventReactive(input$trip_check_btn, {
+    ids = isolate(trip_stations())
+    needs = isolate(input$trip_needs)
     if (length(ids) == 0 || is.null(needs) || length(needs) == 0) return(NULL)
 
-    d = app_data()
+    d = isolate(app_data())
     fac = d$facilities
     stations = d$stations
+    station_routes = d$station_routes %||% list()
 
     name_lookup = setNames(
       vapply(stations, function(s) s$name %||% s$id, character(1)),
@@ -539,8 +600,8 @@ server = function(input, output, session) {
       vapply(stations, function(s) s$id, character(1))
     )
 
-    lapply(ids, function(sid) {
-      # Facilities at this station that match the user's stated needs
+    # Per-station accessibility results
+    station_results = lapply(ids, function(sid) {
       station_fac = Filter(function(f) {
         identical(f$stop_id, sid) && (f$type %||% "") %in% needs
       }, fac)
@@ -553,11 +614,8 @@ server = function(input, output, session) {
                else if (n_op > 0)  "ok"
                else                "blocked"
 
-      # Partial outage = has some out but at least one operational
       is_warn = (status == "ok" && n_out > 0)
-
       out_fac = Filter(function(f) identical(f$status, "out_of_service"), station_fac)
-
       wb = if (sid %in% names(wb_lookup)) as.integer(wb_lookup[[sid]]) else 0L
 
       list(
@@ -568,16 +626,52 @@ server = function(input, output, session) {
         wheelchair_boarding = wb
       )
     })
+
+    # Connecting routes per segment — local set intersection, no API calls
+    segment_routes = if (length(ids) >= 2) {
+      lapply(seq_len(length(ids) - 1), function(i) {
+        routes_a = station_routes[[ids[i]]]   %||% list()
+        routes_b = station_routes[[ids[i+1]]] %||% list()
+        ids_a = vapply(routes_a, function(r) r$id %||% "", character(1))
+        ids_b = vapply(routes_b, function(r) r$id %||% "", character(1))
+        shared = routes_a[ids_a %in% intersect(ids_a, ids_b)]
+        if (length(shared) > 1) {
+          ord = order(
+            vapply(shared, function(r) as.numeric(r$route_type %||% 99), numeric(1)),
+            vapply(shared, function(r) r$id %||% "", character(1))
+          )
+          shared = shared[ord]
+        }
+        list(from_id = ids[i], to_id = ids[i+1], routes = shared)
+      })
+    } else list()
+
+    list(
+      station_results = station_results,
+      segment_routes = segment_routes,
+      station_routes_loaded = length(station_routes) > 0
+    )
   })
 
   output$trip_results = renderUI({
-    results = trip_check_results()
-    if (is.null(results)) {
-      return(p(em("Add stations above to check your trip.")))
+    if (!show_trip_results()) {
+      return(p(em("Add stations above, then press \u201cCheck Trip\u201d.")))
     }
 
-    statuses = vapply(results, function(r) r$status, character(1))
-    warns    = vapply(results, function(r) r$is_warn,  logical(1))
+    results = trip_check_results()
+    if (is.null(results)) {
+      return(p(em("Add stations above, then press \u201cCheck Trip\u201d.")))
+    }
+
+    station_results       = results$station_results
+    segment_routes        = results$segment_routes
+    station_routes_loaded = results$station_routes_loaded %||% FALSE
+    n = length(station_results)
+    if (n == 0) return(p(em("Add stations above, then press \u201cCheck Trip\u201d.")))
+
+    # Overall verdict
+    statuses  = vapply(station_results, function(r) r$status,  character(1))
+    warns     = vapply(station_results, function(r) r$is_warn, logical(1))
     n_blocked = sum(statuses == "blocked")
     n_warn    = sum(warns)
 
@@ -591,18 +685,20 @@ server = function(input, output, session) {
     else
       "\u2713 Trip looks clear"
 
-    station_cards = lapply(results, function(r) {
+    # Build interleaved station nodes + segment connectors
+    items = list()
+    for (i in seq_len(n)) {
+      r = station_results[[i]]
+
       card_class = if (r$status == "blocked")  "trip-station-blocked"
                    else if (r$is_warn)          "trip-station-warn"
                    else if (r$status == "ok")   "trip-station-ok"
                    else                          "trip-station-nodata"
-
       icon = if (r$status == "blocked") "\u2717"
              else if (r$is_warn)         "\u26a0"
              else if (r$status == "ok")  "\u2713"
              else                         "?"
-
-      status_text = if (r$status == "blocked") "No operational facilities for your needs"
+      status_text = if (r$status == "blocked")  "No operational facilities for your needs"
                     else if (r$status == "no_data") "No facility data"
                     else if (r$is_warn) paste0(r$n_operational, "/", r$n_total, " needed facilities operational")
                     else paste0("All ", r$n_total, " needed facilities operational")
@@ -618,25 +714,56 @@ server = function(input, output, session) {
           alt      = if (!is.null(f$alert) && !is.null(f$alert$description))
                        as.character(f$alert$description) else NULL
           tags$div(class = "trip-out-detail",
-            tags$span(paste0(type_lbl, if (nchar(fname) > 0) paste0(' "', fname, '"') else "", " — out of service")),
+            tags$span(paste0(type_lbl, if (nchar(fname) > 0) paste0(' "', fname, '"') else "", " \u2014 out of service")),
             if (!is.null(alt)) tags$div(class = "trip-alt-text", alt) else NULL
           )
         }))
       } else NULL
 
-      tags$div(class = paste("trip-station-card", card_class),
-        tags$div(class = "trip-station-header",
-          tags$span(class = "trip-station-name", paste0(icon, " ", r$name)),
-          tags$span(class = "trip-status-text", status_text)
-        ),
-        perm_warning,
-        out_details
-      )
-    })
+      items = c(items, list(
+        tags$div(class = paste("trip-station-card", card_class),
+          tags$div(class = "trip-station-header",
+            tags$span(class = "trip-station-name", paste0(icon, " ", r$name)),
+            tags$span(class = "trip-status-text", status_text)
+          ),
+          perm_warning,
+          out_details
+        )
+      ))
+
+      # Segment connector between this station and the next
+      if (i < n) {
+        seg = segment_routes[[i]]
+        badges = if (length(seg$routes) > 0) {
+          lapply(seg$routes, function(rt) {
+            bg = if (!is.null(rt$color) && nchar(rt$color %||% "") == 6)
+                   paste0("#", rt$color) else "#888"
+            fg = if (!is.null(rt$text_color) && nchar(rt$text_color %||% "") == 6)
+                   paste0("#", rt$text_color) else "#fff"
+            tags$span(
+              class = "trip-line-badge",
+              style = paste0("background:", bg, ";color:", fg, ";"),
+              rt$name %||% rt$id
+            )
+          })
+        } else if (!station_routes_loaded) {
+          list(tags$span(class = "trip-line-badge trip-line-badge-unknown", "Route data unavailable"))
+        } else {
+          list(tags$span(class = "trip-line-badge trip-line-badge-transfer", "No direct route"))
+        }
+        items = c(items, list(
+          tags$div(class = "trip-connector",
+            tags$div(class = "trip-connector-line"),
+            tags$div(class = "trip-connector-badges", tagList(badges)),
+            tags$div(class = "trip-connector-line")
+          )
+        ))
+      }
+    }
 
     tagList(
       tags$div(class = paste("trip-verdict", verdict_class), verdict_text),
-      tagList(station_cards)
+      tagList(items)
     )
   })
 
