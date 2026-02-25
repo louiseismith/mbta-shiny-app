@@ -286,6 +286,8 @@ ui = fluidPage(
       #trip_needs .checkbox { margin-top: 2px; margin-bottom: 2px; }
       #trip_needs label { font-size: 0.88em; }
       .trip-results        { }
+      /* Remove default white box background from Leaflet divIcon (cluster markers) */
+      .mbta-cluster { background: none; border: none; }
       /* Tighten Bootstrap form-group spacing inside trip checker */
       #trip-tab-content .form-group { margin-bottom: 6px; }
       /* Align Add button baseline with the input field */
@@ -418,11 +420,15 @@ server = function(input, output, session) {
         position = "bottomright",
         html = paste0(
           '<div class="info legend" style="background:white;padding:8px 10px;border-radius:4px;line-height:1.6;font-size:0.85em;">',
-          '<strong>Status</strong><br>',
+          '<strong>Stations</strong><br>',
           legend_item(color_ok,   "\u2713", "All operational"),
           legend_item(color_warn, "!",      "Some outages"),
           legend_item(color_out,  "\u2717", "All out"),
-          '</div>'
+          '<div style="border-top:1px solid #ddd;margin-top:5px;padding-top:5px;">',
+          '<strong>Clusters</strong><br>',
+          legend_item(color_ok,   "8",   "N = all clear"),
+          legend_item(color_warn, "2/8", "outages / total"),
+          '</div></div>'
         )
       )
   })
@@ -435,59 +441,91 @@ server = function(input, output, session) {
 
     st = dplyr::bind_rows(lapply(stations, as.data.frame))
 
-    pal = leaflet::colorFactor(
-      palette = c(color_ok, color_warn, color_out),
-      domain = c("all_ok", "some_out", "all_out"),
-      levels = c("all_ok", "some_out", "all_out")
-    )
     st$status_group = dplyr::case_when(
       (st$n_out_of_service %||% 0) == 0 ~ "all_ok",
-      (st$n_operational %||% 0) == 0 ~ "all_out",
-      TRUE ~ "some_out"
+      (st$n_operational %||% 0) == 0    ~ "all_out",
+      TRUE                               ~ "some_out"
+    )
+    st$fill = dplyr::case_when(
+      st$status_group == "all_ok"  ~ color_ok,
+      st$status_group == "all_out" ~ color_out,
+      TRUE                         ~ color_warn
     )
     st$symbol = dplyr::case_when(
       st$status_group == "all_ok"  ~ "\u2713",
       st$status_group == "all_out" ~ "\u2717",
-      TRUE ~ "!"
+      TRUE                         ~ "!"
     )
 
+    # Build SVG data URI icon for each station.
+    # URLencode the full SVG so that #, <, >, &, spaces etc. are all safely encoded.
+    icon_uris = mapply(function(fill, sym) {
+      svg = paste0(
+        "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'>",
+        "<circle cx='11' cy='11' r='9' fill='", fill,
+        "' stroke='#bbbbbb' stroke-width='1.5' fill-opacity='0.9'/>",
+        "<text x='11' y='15.5' text-anchor='middle' fill='white' ",
+        "font-size='11' font-weight='bold' font-family='sans-serif'>",
+        sym, "</text></svg>"
+      )
+      paste0("data:image/svg+xml,", utils::URLencode(svg, reserved = TRUE))
+    }, st$fill, st$symbol, SIMPLIFY = TRUE)
+
+    # Cluster icon: green ✓ (no outages) or orange with outage count
+    cluster_js = JS("
+      function(cluster) {
+        var markers = cluster.getAllChildMarkers();
+        var total = markers.length;
+        var outageCount = 0;
+        markers.forEach(function(m) {
+          var parts = (m.options.layerId || '').split('___');
+          if (parseInt(parts[1] || '0') > 0) outageCount++;
+        });
+        var color = outageCount === 0 ? '#5cb85c' : '#f0ad4e';
+        // Green: total count. Orange: outages/total fraction.
+        var label = outageCount === 0 ? String(total) : (outageCount + '/' + total);
+        var size = label.length > 3 ? 42 : 34;
+        var fontSize = label.length > 3 ? '11' : '13';
+        return L.divIcon({
+          html: '<div style=\"width:' + size + 'px;height:' + size + 'px;' +
+                'border-radius:50%;background:' + color + ';' +
+                'border:2px solid rgba(255,255,255,0.5);' +
+                'display:flex;align-items:center;justify-content:center;' +
+                'font-size:' + fontSize + 'px;font-weight:bold;color:white;' +
+                'box-shadow:0 1px 4px rgba(0,0,0,0.25);\">' + label + '</div>',
+          className: 'mbta-cluster',
+          iconSize: L.point(size, size, true)
+        });
+      }
+    ")
+
     leafletProxy("map", data = st) %>%
-      clearMarkers() %>%
-      addCircleMarkers(
-        lng = ~lon,
-        lat = ~lat,
-        radius = 10,
-        color = "#bbb",
-        weight = 1.5,
-        fillColor = ~pal(status_group),
-        fillOpacity = 0.85,
-        label = ~symbol,
-        labelOptions = labelOptions(
-          permanent = TRUE,
-          direction = "center",
-          textOnly = TRUE,
-          style = list(
-            "color" = "white",
-            "font-weight" = "bold",
-            "font-size" = "11px"
-          )
+      clearGroup("stations") %>%
+      addMarkers(
+        lng     = ~lon,
+        lat     = ~lat,
+        layerId = ~paste0(id, "___", n_out_of_service),
+        label   = ~name,
+        group   = "stations",
+        icon = icons(
+          iconUrl     = icon_uris,
+          iconWidth   = 22, iconHeight   = 22,
+          iconAnchorX = 11, iconAnchorY  = 11
+        ),
+        clusterOptions = markerClusterOptions(
+          iconCreateFunction  = cluster_js,
+          spiderfyOnMaxZoom   = FALSE,
+          showCoverageOnHover = FALSE,
+          zoomToBoundsOnClick = TRUE,
+          maxClusterRadius    = 50,
+          disableClusteringAtZoom = 13
         )
-      ) %>%
-      addCircleMarkers(
-        lng = ~lon,
-        lat = ~lat,
-        layerId = ~id,
-        radius = 10,
-        color = "transparent",
-        weight = 0,
-        fillColor = "transparent",
-        fillOpacity = 0,
-        label = ~name
       )
   })
 
   observeEvent(input$map_marker_click, {
-    id = input$map_marker_click$id
+    # layerId is encoded as "station_id___outage_count" — strip the suffix
+    id = strsplit(input$map_marker_click$id, "___")[[1]][1]
     if (identical(input$sidebar_tabs, "Trip Check")) {
       current = trip_stations()
       if (!(id %in% current)) trip_stations(c(current, id))
