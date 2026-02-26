@@ -561,6 +561,23 @@ server = function(input, output, session) {
     cached_shapes = d$route_shapes %||% list()
     segment_list = results$segment_routes
 
+    # Fit map to the bounding box of the trip stations
+    trip_lats = vapply(results$station_results, function(sr) {
+      coord_lookup[[sr$id %||% ""]][[1]] %||% NA_real_
+    }, numeric(1))
+    trip_lngs = vapply(results$station_results, function(sr) {
+      coord_lookup[[sr$id %||% ""]][[2]] %||% NA_real_
+    }, numeric(1))
+    trip_lats = trip_lats[!is.na(trip_lats)]
+    trip_lngs = trip_lngs[!is.na(trip_lngs)]
+    if (length(trip_lats) >= 2) {
+      proxy %>% fitBounds(
+        lng1 = min(trip_lngs), lat1 = min(trip_lats),
+        lng2 = max(trip_lngs), lat2 = max(trip_lats),
+        options = list(padding = c(60, 60))
+      )
+    }
+
     session$onFlushed(function() {
       shapes = if (length(cached_shapes) > 0) {
         cached_shapes
