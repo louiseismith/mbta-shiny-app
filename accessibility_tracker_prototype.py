@@ -59,14 +59,19 @@ def _log_facility_statuses(facilities):
                             current,
                             alert.get("id"),
                             alert.get("outage_start"),
+                            alert.get("cause"),
+                            alert.get("outage_end"),
+                            alert.get("header"),
+                            json.dumps(alert) if alert else None,
                         ))
 
                 if to_insert:
                     cur.executemany("""
                         INSERT INTO outage_log
                             (logged_at, facility_id, facility_type, facility_name,
-                             stop_id, station_name, status, alert_id, outage_start)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                             stop_id, station_name, status, alert_id, outage_start,
+                             cause, outage_end_scheduled, alert_header, alert_raw)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                     """, to_insert)
     finally:
         conn.close()
@@ -556,6 +561,7 @@ def get_data_for_app():
         affected_facility_ids = extract_facility_ids_from_alert(alert)
         active_periods = alert_attrs.get("active_period", [])
         outage_start = active_periods[0].get("start") if active_periods else None
+        outage_end = active_periods[0].get("end") if active_periods else None
 
         alert_summary = {
             "id": alert["id"],
@@ -565,6 +571,7 @@ def get_data_for_app():
             "effect": alert_attrs.get("effect"),
             "updated_at": alert_attrs.get("updated_at"),
             "outage_start": outage_start,
+            "outage_end": outage_end,
         }
         for facility_id in affected_facility_ids:
             if facility_id in facilities:
