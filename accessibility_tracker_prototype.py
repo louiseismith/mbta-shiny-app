@@ -1,4 +1,6 @@
+import json
 import os
+import polyline
 import psycopg2
 import requests
 from dotenv import load_dotenv
@@ -213,6 +215,56 @@ def fetch_connecting_routes(stop_a, stop_b, route_types=(0, 1, 2), station_route
     return result
 
 
+def fetch_route_shapes(route_ids):
+    """Fetch and decode shape geometry for given route IDs in one API call.
+
+    Returns dict: {route_id: [[(lat, lon), ...], ...]}
+    Each route maps to a list of polylines (one per shape, e.g. branches/directions).
+    Shapes with priority <= 0 (non-revenue) are excluded.
+    Returns empty dict on error or if route_ids is empty.
+    """
+    if not route_ids:
+        return {}
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/shapes",
+            headers=headers,
+            params={"filter[route]": ",".join(route_ids)},
+        )
+        resp.raise_for_status()
+    except Exception:
+        return {}
+
+    # relationships is None by default — assign shapes to route via per-route request
+    # (bulk request already filtered to this route_id via the outer loop)
+    result = {}
+    for rid in route_ids:
+        try:
+            resp = requests.get(
+                f"{BASE_URL}/shapes",
+                headers=headers,
+                params={"filter[route]": rid},
+            )
+            resp.raise_for_status()
+            shapes = []
+            for shape in resp.json().get("data", []):
+                priority = shape["attributes"].get("priority")
+                if isinstance(priority, int) and priority < 0:
+                    continue
+                # Skip non-revenue shapes (yard moves, maintenance tracks) —
+                # canonical revenue shapes have IDs starting with "canonical-"
+                shape_id = shape.get("id", "")
+                if not shape_id.startswith("canonical-"):
+                    continue
+                encoded = shape["attributes"].get("polyline", "")
+                if encoded:
+                    shapes.append(polyline.decode(encoded))
+            result[rid] = shapes
+        except Exception:
+            result[rid] = []
+    return result
+
+
 def _fetch_station_routes_from_api():
     """Fetch station→routes mapping from MBTA API.
 
@@ -315,6 +367,91 @@ def _read_station_routes_from_db():
                 "text_color": text_color,
                 "route_type": route_type,
             })
+        return result
+    except Exception:
+        return {}
+    finally:
+        conn.close()
+
+
+def sync_route_shapes():
+    """Fetch canonical route shapes from MBTA API and store in Supabase.
+
+    Intended to run on a schedule from the scraper (weekly is sufficient —
+    shapes only change with major construction).
+    Truncates and replaces the full route_shapes table each run.
+    """
+    try:
+        routes_resp = requests.get(
+            f"{BASE_URL}/routes",
+            headers=headers,
+            params={"filter[type]": "0,1,2"},
+        )
+        routes_resp.raise_for_status()
+        routes = routes_resp.json().get("data", [])
+    except Exception:
+        print("sync_route_shapes: failed to fetch routes from MBTA API.")
+        return
+
+    conn = _get_supabase_conn()
+    if conn is None:
+        return
+    try:
+        synced_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        rows = []
+        for route in routes:
+            route_id = route["id"]
+            try:
+                resp = requests.get(
+                    f"{BASE_URL}/shapes",
+                    headers=headers,
+                    params={"filter[route]": route_id},
+                )
+                resp.raise_for_status()
+                encoded_shapes = [
+                    s["attributes"]["polyline"]
+                    for s in resp.json().get("data", [])
+                    if s.get("id", "").startswith("canonical-")
+                    and s["attributes"].get("polyline")
+                ]
+            except Exception:
+                encoded_shapes = []
+            if encoded_shapes:
+                rows.append((route_id, json.dumps(encoded_shapes), synced_at))
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("TRUNCATE TABLE route_shapes")
+                if rows:
+                    cur.executemany("""
+                        INSERT INTO route_shapes (route_id, shapes, synced_at)
+                        VALUES (%s, %s::jsonb, %s)
+                    """, rows)
+        print(f"sync_route_shapes: {len(rows)} routes written at {synced_at}.")
+    finally:
+        conn.close()
+
+
+def _read_route_shapes_from_db():
+    """Read canonical route shapes from Supabase and decode polylines.
+
+    Returns dict: {route_id: [[(lat, lon), ...], ...]}
+    Returns empty dict if Supabase not configured or table is empty.
+    """
+    conn = _get_supabase_conn()
+    if conn is None:
+        return {}
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT route_id, shapes FROM route_shapes")
+                rows = cur.fetchall()
+        result = {}
+        for route_id, shapes_val in rows:
+            try:
+                encoded_list = shapes_val if isinstance(shapes_val, list) else json.loads(shapes_val)
+                result[route_id] = [polyline.decode(enc) for enc in encoded_list]
+            except Exception:
+                pass
         return result
     except Exception:
         return {}
@@ -472,6 +609,12 @@ def get_data_for_app():
     except Exception:
         pass  # Missing station_routes degrades trip checker but doesn't break the app
 
+    route_shapes = {}
+    try:
+        route_shapes = _read_route_shapes_from_db()
+    except Exception:
+        pass  # Missing route_shapes degrades to live API fetch on trip check; doesn't break the app
+
     # Prefetch all service alerts in one call using the cached route list
     service_alerts = {}
     if station_routes:
@@ -493,6 +636,7 @@ def get_data_for_app():
         "facilities": facilities,
         "stations": stations,
         "station_routes": station_routes,
+        "route_shapes": route_shapes,
         "service_alerts": service_alerts,
     }
 

@@ -523,6 +523,87 @@ server = function(input, output, session) {
       )
   })
 
+  # Draw route lines on the map when a trip is checked (trip-context only)
+  observe({
+    proxy = leafletProxy("map")
+
+    if (!show_trip_results()) {
+      proxy %>% clearGroup("route_lines")
+      return()
+    }
+
+    results = trip_check_results()
+    if (is.null(results)) {
+      proxy %>% clearGroup("route_lines")
+      return()
+    }
+
+    # Collect unique route IDs for bulk shape fetch
+    route_info = list()
+    for (seg in results$segment_routes) {
+      for (rt in seg$routes) {
+        rid = rt$id %||% ""
+        if (nchar(rid) > 0 && is.null(route_info[[rid]])) route_info[[rid]] = rt
+      }
+    }
+
+    proxy %>% clearGroup("route_lines")
+    if (length(route_info) == 0) return()
+
+    # Build station coord lookup and capture cached shapes before entering onFlushed
+    d = isolate(app_data())
+    coord_lookup = list()
+    for (s in d$stations) {
+      sid = s$id %||% ""
+      if (nchar(sid) > 0)
+        coord_lookup[[sid]] = c(as.numeric(s$lat %||% 0), as.numeric(s$lon %||% 0))
+    }
+    cached_shapes = d$route_shapes %||% list()
+    segment_list = results$segment_routes
+
+    session$onFlushed(function() {
+      shapes = if (length(cached_shapes) > 0) {
+        cached_shapes
+      } else {
+        tryCatch(fetch_route_shapes(as.list(names(route_info))), error = function(e) list())
+      }
+
+      p = leafletProxy("map", deferUntilFlush = FALSE)
+      for (seg in segment_list) {
+        from_coord = coord_lookup[[seg$from_id]]
+        to_coord   = coord_lookup[[seg$to_id]]
+
+        for (rt in seg$routes) {
+          rid = rt$id %||% ""
+          if (nchar(rid) == 0) next
+          color = if (!is.null(rt$color) && nchar(rt$color %||% "") == 6)
+                    paste0("#", rt$color) else "#888"
+
+          for (coords in shapes[[rid]] %||% list()) {
+            if (length(coords) < 2) next
+            lats = vapply(coords, function(pt) as.numeric(pt[[1]]), numeric(1))
+            lngs = vapply(coords, function(pt) as.numeric(pt[[2]]), numeric(1))
+
+            # Clip to the sub-segment between the two stations
+            if (!is.null(from_coord) && !is.null(to_coord)) {
+              i_from = which.min((lats - from_coord[1])^2 + (lngs - from_coord[2])^2)
+              i_to   = which.min((lats - to_coord[1])^2   + (lngs - to_coord[2])^2)
+              lats = lats[min(i_from, i_to):max(i_from, i_to)]
+              lngs = lngs[min(i_from, i_to):max(i_from, i_to)]
+            }
+
+            if (length(lats) < 2) next
+            p = p %>% addPolylines(
+              lng = lngs, lat = lats,
+              color = color, weight = 3, opacity = 0.7,
+              group = "route_lines"
+            )
+          }
+        }
+      }
+    }, once = TRUE)
+  })
+
   observeEvent(input$map_marker_click, {
     # layerId is encoded as "station_id___outage_count" — strip the suffix
     id = strsplit(input$map_marker_click$id, "___")[[1]][1]
@@ -616,6 +697,7 @@ server = function(input, output, session) {
   observeEvent(input$trip_clear_btn, {
     trip_stations(character(0))
     show_trip_results(FALSE)
+    leafletProxy("map") %>% clearGroup("route_lines")
   })
 
   # Compute trip results only when "Check Trip" is pressed
@@ -787,7 +869,7 @@ server = function(input, output, session) {
         } else if (!station_routes_loaded) {
           list(tags$span(class = "trip-line-badge trip-line-badge-unknown", "Route data unavailable"))
         } else {
-          list(tags$span(class = "trip-line-badge trip-line-badge-transfer", "No direct route"))
+          list(tags$span(class = "trip-line-badge trip-line-badge-transfer", "No direct rail"))
         }
         items = c(items, list(
           tags$div(class = "trip-connector",
