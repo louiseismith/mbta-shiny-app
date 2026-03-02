@@ -1,0 +1,64 @@
+
+Model: gpt-4o (provider: openai)
+================================================================================
+  [01/24] Back Bay Elevator 853 (Orange Line platform to lobby)... lines OK | dir OK
+  [02/24] Back Bay Elevator 854 (Commuter Rail track 2 to lobby)... lines OK | dir WRONG
+  [03/24] Braintree Elevator 811 (Red Line platform to lobby)... lines OK | dir OK
+  [04/24] Government Center Elevator 722 (Blue Line platform to Green ... lines OK | dir OK
+  [05/24] North Station Elevator 909 (Orange Line, Green Line lobby to... lines OK | dir OK
+  [06/24] Shawmut Elevator 953 (Alewife platform to lobby)... lines OK | dir OK
+  [07/24] Shawmut Elevator 954 (Ashmont platform to lobby)... lines OK | dir OK
+  [08/24] Sullivan Square Elevator 881 (Oak Grove platform to lobby)... lines OK | dir OK
+  [09/24] Sullivan Square Escalator 307 (Forest Hills platform to paid... lines OK | dir OK
+  [10/24] JFK/UMass Elevator 830 (Braintree branch platform to lobby)... lines OK | dir OK
+  [11/24] JFK/UMass Elevator 831 (Ashmont branch platform to lobby)... lines OK | dir OK
+  [12/24] Ashmont Elevator 968 (Alewife platform to Peabody Square lob... lines OK | dir OK
+  [13/24] Wood Island Elevator 889 (Bowdoin platform to pedestrian bri... lines OK | dir OK
+  [14/24] Arlington Elevator 963 (Park Street & North platform to lobb... lines OK | dir WRONG
+  [15/24] Arlington Elevator 962 (Copley & West platform to lobby)... lines OK | dir OK
+  [16/24] Kenmore Elevator 971 (Westbound platform to lobby)... lines OK | dir OK
+  [17/24] Kenmore Elevator 972 (Park Street & North platform to lobby,... lines OK | dir WRONG
+  [18/24] Copley Elevator 977 (Kenmore & West, Heath Street platform t... lines OK | dir OK
+  [19/24] Downtown Crossing Elevator 998 (Oak Grove platform to Alewif... lines WRONG | dir OK
+  [20/24] Downtown Crossing Elevator 869 (Alewife platform to Summer S... lines OK | dir OK
+  [21/24] Downtown Crossing Elevator 891 (Oak Grove platform to Frankl... lines OK | dir OK
+  [22/24] Arlington Elevator 964 (Lobby to Boylston Street)... lines OK | dir OK
+  [23/24] North Station Elevator 731 (Passageway to Causeway Street)... lines OK | dir OK
+  [24/24] Forest Hills Elevator 843 (Lower busway to upper lobby)... lines OK | dir OK
+
+================================================================================
+RESULTS BY PATTERN
+================================================================================
+  PATTERN                           JSON  LINES   DIR   ALL
+  ---------------------------------------------------------
+  P1: Explicit line name           5/ 5  5/ 5  4/ 5  4/ 5
+  P2: Terminus reference           8/ 8  8/ 8  8/ 8  8/ 8
+  P3: Green Line directional       5/ 5  5/ 5  3/ 5  3/ 5
+  P4: Cross-platform connector     3/ 3  2/ 3  3/ 3  2/ 3
+  P5: Generic/shared               3/ 3  3/ 3  3/ 3  3/ 3
+  ---------------------------------------------------------
+  OVERALL                          24/24  23/24  21/24  20/24
+
+================================================================================
+FAILURES
+================================================================================
+
+  P1 | Back Bay Elevator 854 (Commuter Rail track 2 to lobby)
+  Expected: lines=['CR-Franklin', 'CR-Needham', 'CR-Providence', 'CR-Worcester'], direction=None
+  Got:      lines=['CR-Franklin', 'CR-Needham', 'CR-Providence', 'CR-Worcester'], direction=inbound
+  Reasoning: The facility indicates it serves Commuter Rail track 2 at Back Bay, which is used for several commuter rail lines; 'Lobby' suggests both directions might use it, but track-specific implies it's for inbound trains typically.
+
+  P3 | Arlington Elevator 963 (Park Street & North platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=eastbound
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=northbound
+  Reasoning: The facility description specifies it connects the Park Street & North platform to the lobby, indicating it serves the northbound platform used by all Green Line routes at Arlington.
+
+  P3 | Kenmore Elevator 972 (Park Street & North platform to lobby, busway)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D'], direction=eastbound
+  Got:      lines=['Green-B', 'Green-C', 'Green-D'], direction=northbound
+  Reasoning: The facility name suggests it serves the platform at Kenmore station from the Park Street & North side, which traditionally services trains heading inbound, typically considered as 'northbound' in the MBTA system.
+
+  P4 | Downtown Crossing Elevator 998 (Oak Grove platform to Alewife platform)
+  Expected: lines=['Orange', 'Red'], direction=None
+  Got:      lines=['Orange'], direction=None
+  Reasoning: The facility connects different platforms within the station for the Orange Line.

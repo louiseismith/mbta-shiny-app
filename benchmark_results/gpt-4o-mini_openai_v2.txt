@@ -1,0 +1,94 @@
+
+Model: gpt-4o-mini (provider: openai)
+================================================================================
+  [01/24] Back Bay Elevator 853 (Orange Line platform to lobby)... lines OK | terminus OK
+  [02/24] Back Bay Elevator 854 (Commuter Rail track 2 to lobby)... lines OK | terminus OK
+  [03/24] Braintree Elevator 811 (Red Line platform to lobby)... lines OK | terminus WRONG
+  [04/24] Government Center Elevator 722 (Blue Line platform to Green ... lines OK | terminus OK
+  [05/24] North Station Elevator 909 (Orange Line, Green Line lobby to... lines OK | terminus OK
+  [06/24] Shawmut Elevator 953 (Alewife platform to lobby)... lines OK | terminus OK
+  [07/24] Shawmut Elevator 954 (Ashmont platform to lobby)... lines OK | terminus OK
+  [08/24] Sullivan Square Elevator 881 (Oak Grove platform to lobby)... lines OK | terminus OK
+  [09/24] Sullivan Square Escalator 307 (Forest Hills platform to paid... lines OK | terminus OK
+  [10/24] JFK/UMass Elevator 830 (Braintree branch platform to lobby)... lines OK | terminus WRONG
+  [11/24] JFK/UMass Elevator 831 (Ashmont branch platform to lobby)... lines OK | terminus WRONG
+  [12/24] Ashmont Elevator 968 (Alewife platform to Peabody Square lob... lines OK | terminus OK
+  [13/24] Wood Island Elevator 889 (Bowdoin platform to pedestrian bri... lines OK | terminus WRONG
+  [14/24] Arlington Elevator 963 (Park Street & North platform to lobb... lines OK | terminus WRONG
+  [15/24] Arlington Elevator 962 (Copley & West platform to lobby)... lines OK | terminus WRONG
+  [16/24] Kenmore Elevator 971 (Westbound platform to lobby)... lines OK | terminus OK
+  [17/24] Kenmore Elevator 972 (Park Street & North platform to lobby,... lines OK | terminus WRONG
+  [18/24] Copley Elevator 977 (Kenmore & West, Heath Street platform t... lines WRONG | terminus WRONG
+  [19/24] Downtown Crossing Elevator 998 (Oak Grove platform to Alewif... lines OK | terminus WRONG
+  [20/24] Downtown Crossing Elevator 869 (Alewife platform to Summer S... lines OK | terminus OK
+  [21/24] Downtown Crossing Elevator 891 (Oak Grove platform to Frankl... lines OK | terminus OK
+  [22/24] Arlington Elevator 964 (Lobby to Boylston Street)... lines OK | terminus OK
+  [23/24] North Station Elevator 731 (Passageway to Causeway Street)... lines WRONG | terminus OK
+  [24/24] Forest Hills Elevator 843 (Lower busway to upper lobby)... lines OK | terminus OK
+
+================================================================================
+RESULTS BY PATTERN
+================================================================================
+  PATTERN                           JSON  LINES   TERM   ALL
+  ---------------------------------------------------------
+  P1: Explicit line name           5/ 5  5/ 5  4/ 5  4/ 5
+  P2: Terminus reference           8/ 8  8/ 8  5/ 8  5/ 8
+  P3: Green Line directional       5/ 5  4/ 5  1/ 5  1/ 5
+  P4: Cross-platform connector     3/ 3  3/ 3  2/ 3  2/ 3
+  P5: Generic/shared               3/ 3  2/ 3  3/ 3  2/ 3
+  ---------------------------------------------------------
+  OVERALL                          24/24  22/24  15/24  14/24
+
+================================================================================
+FAILURES
+================================================================================
+
+  P1 | Braintree Elevator 811 (Red Line platform to lobby)
+  Expected: lines=['Red'], terminus=None
+  Got:      lines=['Red'], terminus=Ashmont/Braintree
+  Reasoning: The facility serves the Red Line platform at Braintree station, which specifically provides access to the lobby.
+
+  P2 | JFK/UMass Elevator 830 (Braintree branch platform to lobby)
+  Expected: lines=['Red'], terminus=Braintree
+  Got:      lines=['Red'], terminus=Ashmont/Braintree
+  Reasoning: The facility is an elevator serving the Braintree branch platform specifically for the Red Line at JFK/UMass station.
+
+  P2 | JFK/UMass Elevator 831 (Ashmont branch platform to lobby)
+  Expected: lines=['Red'], terminus=Ashmont
+  Got:      lines=['Red'], terminus=Ashmont/Braintree
+  Reasoning: The facility serves the Ashmont branch platform specifically, which is served by the Red Line.
+
+  P2 | Wood Island Elevator 889 (Bowdoin platform to pedestrian bridge)
+  Expected: lines=['Blue'], terminus=Bowdoin
+  Got:      lines=['Blue'], terminus=None
+  Reasoning: The facility serves the Bowdoin platform at Wood Island station, which is specific to the Blue Line.
+
+  P3 | Arlington Elevator 963 (Park Street & North platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], terminus=Park Street & North
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], terminus=None
+  Reasoning: The facility serves the Park Street & North platform, which is accessible to all Green Line routes at Arlington station.
+
+  P3 | Arlington Elevator 962 (Copley & West platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], terminus=Copley & West
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], terminus=None
+  Reasoning: The facility is a direct connection from the Copley & West platform to the lobby, serving all Green Line routes at Arlington station.
+
+  P3 | Kenmore Elevator 972 (Park Street & North platform to lobby, busway)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D'], terminus=Park Street & North
+  Got:      lines=['Green-B', 'Green-C', 'Green-D'], terminus=None
+  Reasoning: The facility is a lobby-to-street elevator serving all Green Line routes at Kenmore station.
+
+  P3 | Copley Elevator 977 (Kenmore & West, Heath Street platform to Boylston Street)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], terminus=Kenmore & West
+  Got:      lines=['Green-E'], terminus=Boylston Street
+  Reasoning: The facility is specifically labeled as serving the Heath Street platform which corresponds to the Green-E line heading toward Boylston Street.
+
+  P4 | Downtown Crossing Elevator 998 (Oak Grove platform to Alewife platform)
+  Expected: lines=['Orange', 'Red'], terminus=None
+  Got:      lines=['Orange', 'Red'], terminus=Alewife
+  Reasoning: The facility specifically serves the Oak Grove platform to Alewife platform connection, which relates directly to the Red Line terminus of Alewife and includes the Orange Line.
+
+  P5 | North Station Elevator 731 (Passageway to Causeway Street)
+  Expected: lines=['CR-Fitchburg', 'CR-Haverhill', 'CR-Lowell', 'CR-Newburyport', 'Green-D', 'Green-E', 'Orange'], terminus=None
+  Got:      lines=[], terminus=None
+  Reasoning: The facility is a passageway elevator, which does not serve a specific platform or transit line directly.
