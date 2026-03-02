@@ -45,55 +45,55 @@ FAILURES
 
   P2 | Sullivan Square Escalator 307 (Forest Hills platform to paid lobby)
   Expected: lines=['Orange'], direction=southbound
-  Got:      lines=['Orange'], direction=westbound
-  Reasoning: The facility name specifies the 'Forest Hills platform', indicating the westbound platform on the Orange Line at Sullivan Square.
+  Got:      lines=['Orange'], direction=westbound, confidence=high
+  Reasoning: The facility name explicitly mentions the 'Forest Hills platform', which is the westbound platform on the Orange Line at Sullivan Square.
 
   P2 | JFK/UMass Elevator 830 (Braintree branch platform to lobby)
   Expected: lines=['Red'], direction=southbound
-  Got:      lines=['CR-Greenbush', 'CR-Kingston', 'CR-NewBedford'], direction=None
-  Reasoning: The facility name specifies the 'Braintree branch platform', which is served by the CR-Greenbush, CR-Kingston, and CR-NewBedford lines, and the description indicates it connects to the lobby, so it is not direction-specific.
+  Got:      lines=['CR-Greenbush', 'CR-Kingston', 'CR-NewBedford'], direction=None, confidence=high
+  Reasoning: The facility name explicitly mentions the 'Braintree branch platform,' which is served by the CR lines, and the elevator goes to the lobby, implying it is not direction-specific.
 
   P2 | Ashmont Elevator 968 (Alewife platform to Peabody Square lobby)
   Expected: lines=['Red'], direction=northbound
-  Got:      lines=['Red'], direction=None
-  Reasoning: The facility name explicitly mentions the 'Alewife platform' which is part of the Red Line and does not specify a platform direction.
+  Got:      lines=['Red'], direction=None, confidence=high
+  Reasoning: The facility name specifies the Alewife platform (Red Line) and a lobby, indicating it serves the Red Line without a directional component.
 
   P2 | Wood Island Elevator 889 (Bowdoin platform to pedestrian bridge)
   Expected: lines=['Blue'], direction=westbound
-  Got:      lines=['Blue'], direction=northbound
-  Reasoning: The facility description explicitly mentions the Bowdoin platform, which is the northbound platform at Wood Island, and connects to a pedestrian bridge.
+  Got:      lines=['Blue'], direction=northbound, confidence=high
+  Reasoning: The facility name explicitly mentions the Bowdoin platform, which is the northbound platform on the Blue Line at Wood Island, and connects to a pedestrian bridge.
 
   P3 | Arlington Elevator 963 (Park Street & North platform to lobby)
   Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=eastbound
-  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=northbound
-  Reasoning: The facility name explicitly mentions the 'North platform', indicating it serves the northbound platform of the Green Line.
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=northbound, confidence=high
+  Reasoning: The facility name explicitly mentions the 'North platform', indicating it serves the northbound platform of Arlington station on the Green Line.
 
   P3 | Arlington Elevator 962 (Copley & West platform to lobby)
   Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=westbound
-  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None
-  Reasoning: The facility name explicitly mentions serving the 'Copley & West platform' which is associated with all Green Line branches at Arlington station.
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None, confidence=high
+  Reasoning: The facility name explicitly mentions both the 'Copley & West platform' and the 'lobby', indicating it serves all platforms and is therefore not direction-specific.
 
   P3 | Kenmore Elevator 972 (Park Street & North platform to lobby, busway)
   Expected: lines=['Green-B', 'Green-C', 'Green-D'], direction=eastbound
-  Got:      lines=['Green-B', 'Green-C', 'Green-D'], direction=northbound
-  Reasoning: The facility name explicitly mentions the 'North platform', indicating a northbound direction, and serves all Green Line branches at Kenmore.
+  Got:      lines=['Green-B', 'Green-C', 'Green-D'], direction=northbound, confidence=high
+  Reasoning: The facility name explicitly mentions the 'North platform' and connects to the busway, indicating it serves the northbound platform of the Green Line.
 
   P3 | Copley Elevator 977 (Kenmore & West, Heath Street platform to Boylston Street)
   Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=westbound
-  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None
-  Reasoning: The facility name mentions serving both the Heath Street platform and Boylston Street, implying it connects the entire station and isn't direction-specific.
+  Got:      lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None, confidence=high
+  Reasoning: The facility name explicitly mentions serving the Heath Street platform (which is accessible from both Green lines) and Boylston Street, indicating it serves all Green Line branches at Copley.
 
   P4 | Downtown Crossing Elevator 869 (Alewife platform to Summer Street Concourse)
   Expected: lines=['Red'], direction=northbound
-  Got:      lines=['Red'], direction=None
-  Reasoning: The facility name explicitly mentions the 'Alewife platform', which is the Red Line platform, and does not specify a direction.
+  Got:      lines=['Red'], direction=None, confidence=high
+  Reasoning: The facility name explicitly mentions the 'Alewife platform', which is a direction on the Red Line, and does not mention any other lines.
 
   P5 | North Station Elevator 731 (Passageway to Causeway Street)
   Expected: lines=['CR-Fitchburg', 'CR-Haverhill', 'CR-Lowell', 'CR-Newburyport', 'Green-D', 'Green-E', 'Orange'], direction=None
-  Got:      lines=['Green-D', 'Green-E', 'Orange'], direction=None
-  Reasoning: The facility name explicitly mentions a passageway to Causeway Street, which is a street-level exit shared by the Green and Orange lines at North Station, indicating it is not direction-specific.
+  Got:      lines=['Green-D', 'Green-E', 'Orange'], direction=None, confidence=high
+  Reasoning: The facility name explicitly mentions a passageway to Causeway Street, which is a street-level exit, and it serves the Green and Orange lines at North Station.
 
   P5 | Forest Hills Elevator 843 (Lower busway to upper lobby)
   Expected: lines=['CR-Franklin', 'CR-Needham', 'Orange'], direction=None
-  Got:      lines=['Orange'], direction=None
-  Reasoning: The facility description explicitly mentions the 'lower busway' and 'upper lobby,' indicating it connects to the Orange Line platforms.
+  Got:      lines=['Orange'], direction=None, confidence=high
+  Reasoning: The facility description references the 'lower busway' and 'upper lobby', suggesting it connects to the Orange Line platforms, which are located on the upper level, while the busway is at a lower level.

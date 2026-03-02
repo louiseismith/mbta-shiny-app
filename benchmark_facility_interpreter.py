@@ -69,9 +69,10 @@ def query_ollama_cloud(prompt_messages, model):
             "model": model,
             "messages": prompt_messages,
             "stream": False,
-            "options": {"num_predict": 300},
+            "format": "json",       # enforce JSON output mode where supported
+            "options": {"num_predict": 500},  # raised from 300 — larger models need more tokens
         },
-        timeout=60,
+        timeout=120,  # raised from 60 — larger models are slower
     )
     resp.raise_for_status()
     return resp.json()["message"]["content"]
@@ -85,8 +86,10 @@ def query_ollama_local(prompt_messages, model):
             "model": model,
             "messages": prompt_messages,
             "stream": False,
+            "format": "json",
+            "options": {"num_predict": 500},
         },
-        timeout=60,
+        timeout=120,
     )
     resp.raise_for_status()
     return resp.json()["message"]["content"]
@@ -262,7 +265,7 @@ def run_benchmark(model, provider):
                 print(f"  Raw output: {r['raw'][:200]}")
             else:
                 p = r["parsed"]
-                print(f"  Got:      lines={p.get('lines')}, direction={p.get('direction')}")
+                print(f"  Got:      lines={p.get('lines')}, direction={p.get('direction')}, confidence={p.get('confidence')}")
                 print(f"  Reasoning: {p.get('reasoning', '')}")
 
     return results

@@ -1,0 +1,164 @@
+
+Model: mistral-large-3 (provider: ollama-cloud)
+================================================================================
+  [01/24] Back Bay Elevator 853 (Orange Line platform to lobby)... INVALID JSON
+  [02/24] Back Bay Elevator 854 (Commuter Rail track 2 to lobby)... INVALID JSON
+  [03/24] Braintree Elevator 811 (Red Line platform to lobby)... INVALID JSON
+  [04/24] Government Center Elevator 722 (Blue Line platform to Green ... INVALID JSON
+  [05/24] North Station Elevator 909 (Orange Line, Green Line lobby to... INVALID JSON
+  [06/24] Shawmut Elevator 953 (Alewife platform to lobby)... INVALID JSON
+  [07/24] Shawmut Elevator 954 (Ashmont platform to lobby)... INVALID JSON
+  [08/24] Sullivan Square Elevator 881 (Oak Grove platform to lobby)... INVALID JSON
+  [09/24] Sullivan Square Escalator 307 (Forest Hills platform to paid... INVALID JSON
+  [10/24] JFK/UMass Elevator 830 (Braintree branch platform to lobby)... INVALID JSON
+  [11/24] JFK/UMass Elevator 831 (Ashmont branch platform to lobby)... INVALID JSON
+  [12/24] Ashmont Elevator 968 (Alewife platform to Peabody Square lob... INVALID JSON
+  [13/24] Wood Island Elevator 889 (Bowdoin platform to pedestrian bri... INVALID JSON
+  [14/24] Arlington Elevator 963 (Park Street & North platform to lobb... INVALID JSON
+  [15/24] Arlington Elevator 962 (Copley & West platform to lobby)... INVALID JSON
+  [16/24] Kenmore Elevator 971 (Westbound platform to lobby)... INVALID JSON
+  [17/24] Kenmore Elevator 972 (Park Street & North platform to lobby,... INVALID JSON
+  [18/24] Copley Elevator 977 (Kenmore & West, Heath Street platform t... INVALID JSON
+  [19/24] Downtown Crossing Elevator 998 (Oak Grove platform to Alewif... INVALID JSON
+  [20/24] Downtown Crossing Elevator 869 (Alewife platform to Summer S... INVALID JSON
+  [21/24] Downtown Crossing Elevator 891 (Oak Grove platform to Frankl... INVALID JSON
+  [22/24] Arlington Elevator 964 (Lobby to Boylston Street)... INVALID JSON
+  [23/24] North Station Elevator 731 (Passageway to Causeway Street)... INVALID JSON
+  [24/24] Forest Hills Elevator 843 (Lower busway to upper lobby)... INVALID JSON
+
+================================================================================
+RESULTS BY PATTERN
+================================================================================
+  PATTERN                           JSON  LINES   DIR   ALL
+  ---------------------------------------------------------
+  P1: Explicit line name           0/ 5  0/ 5  0/ 5  0/ 5
+  P2: Terminus reference           0/ 8  0/ 8  0/ 8  0/ 8
+  P3: Green Line directional       0/ 5  0/ 5  0/ 5  0/ 5
+  P4: Cross-platform connector     0/ 3  0/ 3  0/ 3  0/ 3
+  P5: Generic/shared               0/ 3  0/ 3  0/ 3  0/ 3
+  ---------------------------------------------------------
+  OVERALL                          0/24  0/24  0/24  0/24
+
+================================================================================
+FAILURES
+================================================================================
+
+  P1 | Back Bay Elevator 853 (Orange Line platform to lobby)
+  Expected: lines=['Orange'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P1 | Back Bay Elevator 854 (Commuter Rail track 2 to lobby)
+  Expected: lines=['CR-Franklin', 'CR-Needham', 'CR-Providence', 'CR-Worcester'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P1 | Braintree Elevator 811 (Red Line platform to lobby)
+  Expected: lines=['Red'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P1 | Government Center Elevator 722 (Blue Line platform to Green Line platform)
+  Expected: lines=['Blue', 'Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P1 | North Station Elevator 909 (Orange Line, Green Line lobby to Valenti Way)
+  Expected: lines=['Green-D', 'Green-E', 'Orange'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Shawmut Elevator 953 (Alewife platform to lobby)
+  Expected: lines=['Red'], direction=northbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Shawmut Elevator 954 (Ashmont platform to lobby)
+  Expected: lines=['Red'], direction=southbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Sullivan Square Elevator 881 (Oak Grove platform to lobby)
+  Expected: lines=['Orange'], direction=northbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Sullivan Square Escalator 307 (Forest Hills platform to paid lobby)
+  Expected: lines=['Orange'], direction=southbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | JFK/UMass Elevator 830 (Braintree branch platform to lobby)
+  Expected: lines=['Red'], direction=southbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | JFK/UMass Elevator 831 (Ashmont branch platform to lobby)
+  Expected: lines=['Red'], direction=southbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Ashmont Elevator 968 (Alewife platform to Peabody Square lobby)
+  Expected: lines=['Red'], direction=northbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P2 | Wood Island Elevator 889 (Bowdoin platform to pedestrian bridge)
+  Expected: lines=['Blue'], direction=westbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P3 | Arlington Elevator 963 (Park Street & North platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=eastbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P3 | Arlington Elevator 962 (Copley & West platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=westbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P3 | Kenmore Elevator 971 (Westbound platform to lobby)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D'], direction=westbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P3 | Kenmore Elevator 972 (Park Street & North platform to lobby, busway)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D'], direction=eastbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P3 | Copley Elevator 977 (Kenmore & West, Heath Street platform to Boylston Street)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=westbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P4 | Downtown Crossing Elevator 998 (Oak Grove platform to Alewife platform)
+  Expected: lines=['Orange', 'Red'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P4 | Downtown Crossing Elevator 869 (Alewife platform to Summer Street Concourse)
+  Expected: lines=['Red'], direction=northbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P4 | Downtown Crossing Elevator 891 (Oak Grove platform to Franklin Street)
+  Expected: lines=['Orange'], direction=northbound
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P5 | Arlington Elevator 964 (Lobby to Boylston Street)
+  Expected: lines=['Green-B', 'Green-C', 'Green-D', 'Green-E'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P5 | North Station Elevator 731 (Passageway to Causeway Street)
+  Expected: lines=['CR-Fitchburg', 'CR-Haverhill', 'CR-Lowell', 'CR-Newburyport', 'Green-D', 'Green-E', 'Orange'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 
+
+  P5 | Forest Hills Elevator 843 (Lower busway to upper lobby)
+  Expected: lines=['CR-Franklin', 'CR-Needham', 'Orange'], direction=None
+  Error: 404 Client Error: Not Found for url: https://ollama.com/api/chat
+  Raw output: 

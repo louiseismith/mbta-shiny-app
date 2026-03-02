@@ -26,13 +26,13 @@ run() {
 run gemma3:4b               ollama-cloud
 run gemma3:12b              ollama-cloud
 run gemma3:27b              ollama-cloud
-run mistral-large-3         ollama-cloud
+run mistral-large           ollama-cloud
 run gemini-3-flash-preview  ollama-cloud
 run deepseek-v3.2           ollama-cloud
 
-# --- OpenAI ---
-run gpt-4o-mini     openai
-run gpt-4o          openai
+# --- OpenAI (results already exist from previous run, skipping) ---
+# run gpt-4o-mini     openai
+# run gpt-4o          openai
 
 echo "Done — $(date)"
 echo "Results in $OUTDIR/:"
