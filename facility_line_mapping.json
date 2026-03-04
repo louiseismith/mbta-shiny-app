@@ -755,12 +755,13 @@
     "station_name": "Ashmont",
     "stop_id": "place-asmnl",
     "lines": [
+      "Mattapan",
       "Red"
     ],
-    "direction": "northbound",
-    "pattern": 2,
+    "direction": null,
+    "pattern": 4,
     "source": "claude",
-    "reasoning": "Alewife platform (Red northbound) exiting toward Mattapan Line lobby."
+    "reasoning": "Cross-platform connector: Red northbound (Alewife) platform to Mattapan Line lobby."
   },
   {
     "facility_id": "970",

@@ -15,6 +15,7 @@ in the app.
 | `seed_facilities_input.json` | Raw facility data from MBTA API + station routes from Supabase |
 | `seed_facility_line_mapping.py` | Classification script (run to regenerate or upload) |
 | `facility_line_mapping.json` | Output: 526 classified facilities, ready to upload |
+| `verify_line_assignments.py` | Verification script — checks mapping for correctness |
 
 ## How to upload to Supabase
 
@@ -65,13 +66,15 @@ CREATE TABLE facility_line_mapping (
 |---|---|
 | P0 (no routes) | 35 |
 | P1 (explicit line) | 58 |
-| P2 (terminus ref) | 120 |
+| P2 (terminus ref) | 119 |
 | P3 (Green directional) | 49 |
-| P4 (cross-platform) | 17 |
+| P4 (cross-platform) | 18 |
 | P5 (generic/shared) | 247 |
 | **Total** | **526** |
 
-161 facilities have a direction assigned; 365 are non-directional.
+About one-third of facilities have a direction assigned; the rest are non-directional
+(shared infrastructure, cross-platform connectors, or single-line stations where
+direction is implied by context).
 
 ### Classification priority order
 
@@ -174,6 +177,44 @@ P4 check ran first and matched the Green Label as a multi-route reference.
 
 **Fix**: Reordered checks so P3 runs before P4.
 
+### Bug D — Ashmont elevator 969 missing Mattapan line
+
+Elevator 969 ("Alewife platform to Mattapan Line lobby") connects the Red
+northbound platform to the Mattapan transfer lobby. The terminus check
+("Alewife") fired first and classified it as P2 with `lines=["Red"]` only,
+missing the Mattapan line referenced in the name.
+
+**Fix**: Reclassified as P4 (cross-platform connector) with
+`lines=["Mattapan", "Red"]`, `direction=null`.
+
+Found by `verify_line_assignments.py` name-consistency check.
+
 ## Validation
 
+### Golden benchmark cases
 All 24 golden benchmark cases produce correct `lines` and `direction` values.
+
+### Automated verification (`verify_line_assignments.py`)
+
+491 facilities checked (35 P0 skipped), 0 errors, 0 warnings.
+
+Five checks run across all facilities:
+
+| Check | What it catches |
+|---|---|
+| **Route validity** (`--routes`) | Assigned line doesn't serve the station (checked against Supabase `station_routes`) |
+| **Name consistency** | Line keyword in facility name not reflected in assigned `lines` (e.g., name says "Mattapan" but `lines` has only `["Red"]`) |
+| **Pattern rules** | Structural invariants per pattern: P1 has lines, P2/P3 have direction, P3 is Green-only, P5 matches all station routes with no direction, P4 has lines |
+| **Direction sanity** | Impossible line/direction combos (e.g., Red + eastbound, Blue + northbound) |
+| **Terminus direction** | P2 terminus name implies wrong direction (e.g., "Alewife" but direction is southbound) |
+
+```bash
+# Offline checks (fast, no network):
+python verify_line_assignments.py
+
+# Full checks including route validity (reads from Supabase):
+python verify_line_assignments.py --routes
+```
+
+### Data uploaded to Supabase
+Seed uploaded via `python seed_facility_line_mapping.py --upload`.
