@@ -28,8 +28,8 @@ GOLDEN = [
     {
         "facility_name": "Back Bay Elevator 854 (Commuter Rail track 2 to lobby)",
         "station_name": "Back Bay",
-        "routes": ["CR-Franklin", "CR-Needham", "CR-Providence", "CR-Worcester", "Orange"],
-        "expected_lines": ["CR-Franklin", "CR-Needham", "CR-Providence", "CR-Worcester"],
+        "routes": ["CR-Foxboro", "CR-Franklin", "CR-Needham", "CR-Providence", "CR-Worcester", "Orange"],
+        "expected_lines": ["CR-Foxboro", "CR-Franklin", "CR-Needham", "CR-Providence", "CR-Worcester"],
         "expected_direction": None,
         "notes": "Explicitly says Commuter Rail. All CR lines at this station share the track.",
         "pattern": 1,
