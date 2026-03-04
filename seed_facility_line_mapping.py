@@ -642,10 +642,10 @@ MANUAL_OVERRIDES = {
     # Ashmont: "Alewife platform to Mattapan Line lobby" — Red northbound platform,
     # but exits to Mattapan Line lobby (transfer point)
     "969": {
-        "lines": ["Red"],
-        "direction": "northbound",
-        "pattern": 2,
-        "reasoning": "Alewife platform (Red northbound) exiting toward Mattapan Line lobby.",
+        "lines": ["Mattapan", "Red"],
+        "direction": None,
+        "pattern": 4,
+        "reasoning": "Cross-platform connector: Red northbound (Alewife) platform to Mattapan Line lobby.",
     },
 
     # Ashmont mobile lift (Mattapan Line) — serves Mattapan trolley specifically
