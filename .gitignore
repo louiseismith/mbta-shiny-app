@@ -2,6 +2,5 @@
 .DS_Store
 .Rhistory
 .Rdata
-test_prompt.py
-data/
+scripts/test_prompt.py
 __pycache__/

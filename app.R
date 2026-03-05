@@ -29,7 +29,7 @@ for (p in c(".", "..", "../..")) {
 
 # Script lives in the same folder as app.R
 app_dir = getwd()
-script_path = file.path(app_dir, "accessibility_tracker_prototype.py")
+script_path = file.path(app_dir, "app_backend.py")
 if (!file.exists(script_path)) stop("Python script not found: ", script_path)
 reticulate::source_python(script_path)
 
@@ -806,6 +806,18 @@ server = function(input, output, session) {
     n = length(station_results)
     if (n == 0) return(p(em("Add stations above, then press \u201cCheck Trip\u201d.")))
 
+    d   = app_data()
+    flm = d$facility_line_mapping %||% list()
+
+    # Flat route_id → route info lookup (for badge colors)
+    route_info_lookup = list()
+    for (routes_at_stop in (d$station_routes %||% list())) {
+      for (rt in routes_at_stop) {
+        if (!is.null(rt$id) && is.null(route_info_lookup[[rt$id]]))
+          route_info_lookup[[rt$id]] = rt
+      }
+    }
+
     # Overall verdict
     statuses  = vapply(station_results, function(r) r$status,  character(1))
     warns     = vapply(station_results, function(r) r$is_warn, logical(1))
@@ -826,6 +838,14 @@ server = function(input, output, session) {
     items = list()
     for (i in seq_len(n)) {
       r = station_results[[i]]
+
+      # Route IDs from adjacent segments — used to match facility line badges
+      seg_ids = function(seg) vapply(seg$routes %||% list(), function(rt) rt$id %||% "", character(1))
+      relevant_route_ids = unique(c(
+        if (i > 1) seg_ids(segment_routes[[i - 1]]) else character(0),
+        if (i < n) seg_ids(segment_routes[[i]])     else character(0)
+      ))
+      relevant_route_ids = relevant_route_ids[nchar(relevant_route_ids) > 0]
 
       card_class = if (r$status == "blocked")  "trip-station-blocked"
                    else if (r$is_warn)          "trip-station-warn"
@@ -850,7 +870,27 @@ server = function(input, output, session) {
           fname    = as.character(f$name %||% f$short_name %||% "")
           alt      = if (!is.null(f$alert) && !is.null(f$alert$description))
                        as.character(f$alert$description) else NULL
+
+          # Per-line badges: intersect facility's lines with adjacent segment routes
+          fac_info   = if (!is.null(f$id)) flm[[as.character(f$id)]] else NULL
+          fac_lines  = as.character(unlist(fac_info$lines %||% list()))
+          fac_source = fac_info$source %||% ""
+          matched    = if (length(fac_lines) > 0 && fac_source != "unresolved")
+                         intersect(fac_lines, relevant_route_ids) else character(0)
+          line_badges = if (length(matched) > 0) {
+            lapply(matched, function(rid) {
+              rt = route_info_lookup[[rid]]
+              if (is.null(rt)) return(NULL)
+              bg = if (!is.null(rt$color) && nchar(rt$color %||% "") == 6) paste0("#", rt$color) else "#888"
+              fg = if (!is.null(rt$text_color) && nchar(rt$text_color %||% "") == 6) paste0("#", rt$text_color) else "#fff"
+              tags$span(class = "trip-line-badge",
+                        style = paste0("background:", bg, ";color:", fg, ";margin-right:4px;"),
+                        rt$name %||% rid)
+            })
+          } else NULL
+
           tags$div(class = "trip-out-detail",
+            if (!is.null(line_badges)) tagList(line_badges) else NULL,
             tags$span(paste0(type_lbl, if (nchar(fname) > 0) paste0(' "', fname, '"') else "", " \u2014 out of service")),
             if (!is.null(alt)) tags$div(class = "trip-alt-text", alt) else NULL
           )

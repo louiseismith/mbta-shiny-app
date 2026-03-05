@@ -1223,10 +1223,11 @@ def print_summary(results):
 def main():
     parser = argparse.ArgumentParser(description="Classify MBTA facilities by line and direction.")
     parser.add_argument("--upload", action="store_true", help="Also upload to Supabase")
-    parser.add_argument("--input", default="seed_facilities_input.json",
-                        help="Input JSON file (default: seed_facilities_input.json)")
-    parser.add_argument("--output", default="facility_line_mapping.json",
-                        help="Output JSON file (default: facility_line_mapping.json)")
+    _data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    parser.add_argument("--input", default=os.path.join(_data_dir, "seed_facilities_input.json"),
+                        help="Input JSON file (default: ../data/seed_facilities_input.json)")
+    parser.add_argument("--output", default=os.path.join(_data_dir, "facility_line_mapping.json"),
+                        help="Output JSON file (default: ../data/facility_line_mapping.json)")
     args = parser.parse_args()
 
     # Load facilities

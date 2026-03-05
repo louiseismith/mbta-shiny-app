@@ -34,7 +34,7 @@ for _d in [_here, os.path.dirname(_here), os.path.dirname(os.path.dirname(_here)
         load_dotenv(_env)
         break
 
-MAPPING_FILE = os.path.join(os.path.dirname(__file__), "facility_line_mapping.json")
+MAPPING_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "facility_line_mapping.json")
 
 # ── Reference data ─────────────────────────────────────────────────────────
 

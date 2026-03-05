@@ -3,7 +3,10 @@
 # Fetches all facilities from the MBTA API, joins with station_routes from Supabase,
 # and prints facilities at multi-line stations — where line interpretation is non-trivial.
 
-from accessibility_tracker_prototype import fetch_facilities, _read_station_routes_from_db
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from modules.mbta_api import fetch_facilities
+from modules.db import _read_station_routes_from_db
 
 def main():
     print("Fetching facilities from MBTA API...")
