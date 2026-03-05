@@ -3,7 +3,7 @@
 # Runs the facility interpreter benchmark against all candidate models.
 # Results saved to benchmark_results/ with unique filenames.
 
-PYTHON=../../../.venv/bin/python
+PYTHON=../.venv/bin/python
 SCRIPT=benchmark_facility_interpreter.py
 OUTDIR=benchmark_results
 
