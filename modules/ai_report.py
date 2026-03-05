@@ -9,7 +9,7 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv
 
-from mbta_api import fetch_route_alerts
+from modules.mbta_api import fetch_route_alerts
 
 load_dotenv()
 
