@@ -75,7 +75,6 @@ def _build_station_prompt(station_name, station_facilities,
     type_labels = {
         "ELEVATOR": "elevator",
         "ESCALATOR": "escalator",
-        "RAMP": "ramp",
         "PORTABLE_BOARDING_LIFT": "portable lift",
     }
     counts = {}
@@ -87,7 +86,7 @@ def _build_station_prompt(station_name, station_facilities,
             out_counts[ftype] = out_counts.get(ftype, 0) + 1
 
     count_parts = []
-    for ftype in ("ELEVATOR", "ESCALATOR", "RAMP", "PORTABLE_BOARDING_LIFT"):
+    for ftype in ("ELEVATOR", "ESCALATOR", "PORTABLE_BOARDING_LIFT"):
         total = counts.get(ftype, 0)
         if total == 0:
             continue
@@ -102,7 +101,7 @@ def _build_station_prompt(station_name, station_facilities,
     if wheelchair_boarding == 2:
         wheelchair_line = (
             "STATION WHEELCHAIR STATUS: NOT ACCESSIBLE — this station is "
-            "permanently inaccessible to wheelchair users per GTFS data.\n\n"
+            "not wheelchair accessible per GTFS data.\n\n"
         )
 
     operational = [f for f in station_facilities if f.get("status") == "operational"]
@@ -156,21 +155,21 @@ def _build_station_prompt(station_name, station_facilities,
         service_block = "(none)"
 
     prompt = (
-        f"I rely on escalators and elevators and I'm about to travel through "
-        f"{station_name} station. Give me a quick travel briefing based on "
-        f"this data.\n\n"
+        f"You are generating an accessibility briefing for {station_name} station "
+        f"for riders who may rely on elevators, escalators, or other accessibility "
+        f"facilities to navigate the station. Use the data below.\n\n"
         f"{wheelchair_line}"
         f"{summary_line}\n\n"
         f"Facilities:\n{facilities_block}\n\n"
         f"Service alerts:\n{service_block}\n\n"
-        f"In one short paragraph (1-3 sentences), tell me:\n"
-        f"1. Whether I can get from street to platform accessibly right now.\n"
-        f"2. If not, what I should do instead — use specific details from "
+        f"In one short paragraph (1-3 sentences):\n"
+        f"1. State whether the station is currently accessible from street to platform.\n"
+        f"2. If not, what riders should do instead — use specific details from "
         f"the MBTA instructions above.\n"
-        f"In another short paragraph (1-2 sentences), tell me:\n"
-        f"1. Any service disruptions that affect my trip.\n\n"
-        f"Only use the data above. Write as if talking directly to me. "
-        f"Start with the key information immediately — no greeting or preamble."
+        f"In another short paragraph (1-2 sentences):\n"
+        f"1. Note any service disruptions that may affect travel through this station.\n\n"
+        f"Only use the data above. Write directly and concisely — "
+        f"no greeting or preamble. Start with the key information immediately."
     )
     return prompt
 
