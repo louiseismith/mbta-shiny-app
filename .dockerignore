@@ -1,6 +1,0 @@
-.env
-.DS_Store
-.git
-*.md
-test_prompt.py
-data/
