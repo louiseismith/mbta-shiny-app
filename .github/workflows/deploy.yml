@@ -2,7 +2,7 @@ name: Deploy Shiny R App to Posit Connect
 
 on:
   push:
-    branches: [v2-development]
+    branches: [v2-development, v3]
     paths:
       - '**'
       - '.github/workflows/deploy.yml'
