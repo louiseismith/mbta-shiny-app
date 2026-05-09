@@ -20,7 +20,9 @@ if (dir.exists(venv_path)) {
   if (file.exists(req_file)) {
     pkgs = trimws(readLines(req_file))
     pkgs = pkgs[nchar(pkgs) > 0]
-    reticulate::py_install(pkgs)
+    import_names = gsub("python-", "", gsub("-binary$", "", pkgs))
+    missing = pkgs[!mapply(reticulate::py_module_available, import_names)]
+    if (length(missing) > 0) reticulate::py_install(missing)
   }
 }
 
