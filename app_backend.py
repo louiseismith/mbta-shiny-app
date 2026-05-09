@@ -19,6 +19,7 @@ from modules.db import (
     _read_facility_line_mapping_from_db,
     _read_route_shapes_from_db,
     _read_station_routes_from_db,
+    fetch_outage_history,
 )
 from modules.mbta_api import (
     BASE_URL,

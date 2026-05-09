@@ -1,0 +1,309 @@
+[
+  {
+    "case": "fully_inaccessible",
+    "station_id": "place-hymnl",
+    "station_name": "Hynes Convention Center",
+    "wheelchair_boarding": 2,
+    "facilities": [
+      {
+        "id": "315",
+        "type": "ESCALATOR",
+        "name": "Hynes Convention Center Escalator 315 (Kenmore & West platform to paid lobby)",
+        "short_name": "Kenmore & West platform to paid lobby",
+        "stop_id": "place-hymnl",
+        "station_name": "Hynes Convention Center",
+        "status": "operational",
+        "alert": null
+      }
+    ],
+    "service_alerts": [
+      {
+        "header": "Green Line C Branch: Shuttle buses will replace service between Kenmore and Cleveland Circle through Sunday, May 17 for infrastructure upgrades.",
+        "effect": "SHUTTLE",
+        "description": "Accessibility:\r\nShuttle bus service will not be available at Saint Mary\u2019s Street, Kent Street, or Brandon Hall in both directions. Riders should instead\u00a0utilize\u00a0shuttle bus service at the next nearest stop.\r\n\r\nAlternate Service:\r\nRiders are also encouraged to utilize nearby D branch service at Reservoir.\r\n\r\nPeak Period Limited Shuttle Service:\r\nA limited stop shuttle will be offered during peak hours, serving Cleveland Circle, Washington Sq, Coolidge Corner, and Kenmore only.\r\n\r\nWalking Alternatives:\r\nPassengers can also walk from Cleveland Circle to Reservoir Station (3-4 min) or from Dean Road to Beaconsfield (4-5 min), for D Branch service.\r\n\r\nTravel Time:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Government Center from Cleveland Circle should budget at least an additional 15 minutes of travel in additional to their regular commute.\r\n\r\nAdditional Stop Closures:\r\n\r\nOutbound Green Line trains will not stop at Englewood Avenue from May 18 to July 10:\r\n \r\nTrains will bypass the stop during this time period. Riders can instead board or disembark one stop away at either Cleveland Circle or Dean Road, which are 0.2 miles away (or a 4- to 5-minute walk).\r\n \r\nOutbound Green Line trains will not stop at Tappan Street from May 18 to July 10:\r\n \r\nTrains will bypass the stop during this time period. Riders can instead board or disembark one stop away at either Washington Square or Dean Road, which are 0.2 miles away (or a 3- to 4-minute walk).\r\n \r\nInbound Green Line trains will not stop at Tappan Street from May 18 to June 12:\r\n\r\nRiders can instead board or disembark one stop away at either Washington Square or Dean Road.\r\n\r\nShuttle Locations:\r\n\r\nKenmore:\r\nCommonwealth Ave @ Kenmore St (512 Commonwealth Ave)\r\n\r\nSt Mary's St:\r\nNo shuttles\r\n\r\nHawes St:\r\nInbound - Beacon St @ Hawes St (1089 Beacon St) \r\nOutbound - Beacon St opp Hawes St (1080 Beacon St)\r\n\r\nKent St:\r\nNo shuttles\r\n\r\nSaint Paul St:\r\nInbound - Beacon St @ St Paul St (1253 Beacon St) \r\nOutbound - Beacon St @ St Paul St (1200 Beacon St)\r\n\r\nCoolidge Corner:\r\nInbound - Beacon St @ Harvard St (1337 Beacon St) \r\nOutbound - Beacon St @ Harvard St (1314 Beacon St)\r\n\r\nSummit Ave:\r\nInbound - Beacon St @ Marion St (1431 Beacon St) \r\nOutbound - Beacon St @ Summit Ave (1440 Beacon St)\r\n\r\nBrandon Hall:\r\nNo Shuttles\r\n\r\nFairbanks St:\r\nInbound - Beacon St @ Fairbanks St (1539 Beacon St) \r\nOutbound - Beacon St @ Lancaster Ter (1550 Beacon St)\r\n\r\nWashington Sq:\r\nInbound - Beacon St @ Washington St (1601 Beacon St) \r\nOutbound - Beacon St @ Washington St (1620 Beacon St)\r\n\r\nTappan St:\r\nInbound - Beacon St @ Tappan St (1695 Beacon St) \r\nOutbound - Beacon St @ Williston Rd (1700 Beacon St)\r\n\r\nDean Rd:\r\nInbound - Beacon St @ Dean Rd (1773 Beacon St)\r\nOutbound - Beacon St @ Corey Rd (1762 Beacon St)\r\n\r\nEnglewood Ave:\r\nInbound - Beacon St @ Clinton Path (1855 Beacon St) \r\nOutbound - Beacon St @ Englewood Ave (1856 Beacon St)\r\n\r\nCleveland Circle:\r\nBeacon St @ Cleveland Cir Station (1927 Beacon St)"
+      }
+    ]
+  },
+  {
+    "case": "combined",
+    "station_id": "place-andrw",
+    "station_name": "Andrew",
+    "wheelchair_boarding": 1,
+    "facilities": [
+      {
+        "id": "872",
+        "type": "ELEVATOR",
+        "name": "Andrew Elevator 872 (Lobby to street)",
+        "short_name": "Lobby to street",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "123",
+        "type": "ESCALATOR",
+        "name": "Andrew Escalator 123 (Ashmont/Braintree platform to busway)",
+        "short_name": "Ashmont/Braintree platform to busway",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "out_of_service",
+        "alert": {
+          "id": "1001818",
+          "header": "Andrew Escalator 123 (Ashmont/Braintree platform to busway) is unavailable until further notice, pending replacement.",
+          "description": null,
+          "cause": "MAINTENANCE",
+          "effect": "ESCALATOR_CLOSURE",
+          "outage_start": "2023-03-22T10:20:00-04:00"
+        }
+      },
+      {
+        "id": "301",
+        "type": "ESCALATOR",
+        "name": "Andrew Escalator 301 (Alewife platform to lobby)",
+        "short_name": "Alewife platform to lobby",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "124",
+        "type": "ESCALATOR",
+        "name": "Andrew Escalator 124 (Ashmont/Braintree platform to busway)",
+        "short_name": "Ashmont/Braintree platform to busway",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "out_of_service",
+        "alert": {
+          "id": "1009001",
+          "header": "Andrew Escalator 124 (Ashmont/Braintree platform to busway) is unavailable.",
+          "description": null,
+          "cause": "UNKNOWN_CAUSE",
+          "effect": "ESCALATOR_CLOSURE",
+          "outage_start": "2026-05-07T10:13:22-04:00"
+        }
+      },
+      {
+        "id": "880",
+        "type": "ELEVATOR",
+        "name": "Andrew Elevator 880 (Alewife platform to lobby)",
+        "short_name": "Alewife platform to lobby",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "879",
+        "type": "ELEVATOR",
+        "name": "Andrew Elevator 879 (Ashmont/Braintree platform to lobby)",
+        "short_name": "Ashmont/Braintree platform to lobby",
+        "stop_id": "place-andrw",
+        "station_name": "Andrew",
+        "status": "operational",
+        "alert": null
+      }
+    ],
+    "service_alerts": [
+      {
+        "header": "Red Line: Shuttle buses replace service between Broadway, Quincy Center, and Ashmont from May 29 - May 31, due to signal work. Commuter Rail service will be fare-free between South Station and Braintree during this work.",
+        "effect": "SHUTTLE",
+        "description": "Accessibility:\r\nFree and accessible shuttle buses will operate between Broadway & Quincy Center and between Broadway & Ashmont. Accessible van service will also be available. Riders should see station personnel for assistance.\r\n\r\nAlternate service:\r\nRiders are encouraged to consider Commuter Rail service between South Station and Braintree, which will be free during this service change. Regular fares should be purchased for travel beyond Braintree.\r\n\r\nTravel times:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Park Street from Ashmont/Braintree should budget at least an additional 40 \u2013 50 minutes of travel in additional to their regular commute.\r\n\r\nShuttle Locations:\r\n\r\nBroadway:\r\nW. Broadway @ Broadway Station\r\n\r\nAndrew:\r\nNorthbound - Dorchester Ave @ Leeds St\r\nSouthbound - Dorchester Ave @ Dexter St\r\n\r\nJFK/UMass:\r\nNorthbound - Inner Busway\r\nSouthbound - Outer Busway\r\n\r\nNorth Quincy:\r\nAll shuttles - North Quincy Busway\r\n\r\nWollaston:\r\nAll shuttles - Newport Ave @ Brook St\r\n\r\nQuincy Center:\r\nBurgin Pkwy @ Quincy Ctr Station\r\n\r\nSavin Hill:\r\nNorthbound - Dorchester Ave @ Savin Hill Ave\r\nSouthbound - Dorchester Ave @ Thornley Rd\r\n\r\nFields Corner:\r\nNorthbound - Dorchester Ave opp Charles St\r\nSouthbound - Dorchester Ave @ Fields Corner Station\r\n\r\nShawmut:\r\nAll shuttles - Dorchester Ave @ Centre St\r\n\r\nAshmont:\r\nAshmont Busway (Berths # 5 & 6)"
+      },
+      {
+        "header": "Red Line: Shuttle buses replace service between Broadway, JFK/UMass, and Ashmont beginning at 6:00 PM on Thursday, May 14 through Monday, May 18, for signal work.",
+        "effect": "SHUTTLE",
+        "description": "Braintree branch riders:\r\nRegular service will operate between JFK/UMass and Braintree, but riders must take a shuttle bus between Broadway and JFK/UMass.\r\n\r\nAccessibility:\r\nFree and accessible shuttle buses will operate between Broadway and Ashmont. Accessible van service will be available between Broadway and Ashmont. Riders should see station personnel for assistance.\r\n\r\nTravel times:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Park Street from Ashmont should budget at least an additional 30 \u2013 40 minutes of travel in additional to their regular commute.\r\n\r\nShuttle Locations:\r\n\r\nBroadway:\r\nW. Broadway @ Broadway Station\r\n\r\nAndrew:\r\nNorthbound - Dorchester Ave @ Leeds St\r\nSouthbound - Dorchester Ave @ Dexter St\r\n\r\nJFK/UMass:\r\nNorthbound - Inner Busway\r\nSouthbound - Outer Busway\r\n\r\nSavin Hill:\r\nNorthbound - Dorchester Ave @ Savin Hill Ave\r\nSouthbound - Dorchester Ave @ Thornley Rd\r\n\r\nFields Corner:\r\nNorthbound - Dorchester Ave opp Charles St\r\nSouthbound - Dorchester Ave @ Fields Corner Station\r\n\r\nShawmut:\r\nAll shuttles - Dorchester Ave @ Centre St\r\n\r\nAshmont:\r\nAshmont Busway (Berths # 5 & 6)"
+      }
+    ]
+  },
+  {
+    "case": "multiple_outages",
+    "station_id": "place-chncl",
+    "station_name": "Chinatown",
+    "wheelchair_boarding": 1,
+    "facilities": [
+      {
+        "id": "366",
+        "type": "ESCALATOR",
+        "name": "Chinatown Escalator 366 (Forest Hills platform to Washington Street)",
+        "short_name": "Forest Hills platform to Washington Street",
+        "stop_id": "place-chncl",
+        "station_name": "Chinatown",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "922",
+        "type": "ELEVATOR",
+        "name": "Chinatown Elevator 922 (Forest Hills platform to Boylston St, Washington St)",
+        "short_name": "Forest Hills platform to Boylston St, Washington St",
+        "stop_id": "place-chncl",
+        "station_name": "Chinatown",
+        "status": "out_of_service",
+        "alert": {
+          "id": "1007057",
+          "header": "Chinatown Elevator 922 (Forest Hills platform to Boylston St, Washington St) will be unavailable from Mon, May 25 through Tue, May 26 due to maintenance.",
+          "description": "To exit, exit the train at Tufts Medical Center, then take an Oak Grove-bound train to Chinatown and use Chinatown Elevator 876. To board, proceed to the Silver Line SL5 bus stop at Washington St and Essex St, and take an SL5 (Downtown) bus to Tufts Medical Center (stay on bus past the Temple Pl stop). Alternatively, if possible, travel 0.2 miles south on Washington St to Tufts Medical Center.",
+          "cause": "MAINTENANCE",
+          "effect": "ELEVATOR_CLOSURE",
+          "outage_start": "2026-05-25T03:00:00-04:00"
+        }
+      },
+      {
+        "id": "377",
+        "type": "ESCALATOR",
+        "name": "Chinatown Escalator 377 (Oak Grove platform to Washington Street)",
+        "short_name": "Oak Grove platform to Washington Street",
+        "stop_id": "place-chncl",
+        "station_name": "Chinatown",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "876",
+        "type": "ELEVATOR",
+        "name": "Chinatown Elevator 876 (Oak Grove platform to Washington St, Essex St)",
+        "short_name": "Oak Grove platform to Washington St, Essex St",
+        "stop_id": "place-chncl",
+        "station_name": "Chinatown",
+        "status": "out_of_service",
+        "alert": {
+          "id": "1007052",
+          "header": "Chinatown Elevator 876 (Oak Grove platform to Washington St, Essex St) will be unavailable on Mon, May 11 due to maintenance.",
+          "description": "To exit, exit the train at Tufts Medical Center and proceed to the Washington St exit. At street level, cross Washington St, then take a Silver Line SL4 or SL5 bus to Washington St and Essex St (Chinatown Station). Alternatively, if possible, travel 0.2 miles north on Washington St to Chinatown Station. To board, use Chinatown Elevator 922 to access the Forest Hills platform. Take an Forest Hills-bound train to Tufts Medical Center transfer to an Oak Grove-bound train.",
+          "cause": "MAINTENANCE",
+          "effect": "ELEVATOR_CLOSURE",
+          "outage_start": "2026-05-11T03:00:00-04:00"
+        }
+      }
+    ],
+    "service_alerts": []
+  },
+  {
+    "case": "single_outage",
+    "station_id": "place-sbmnl",
+    "station_name": "Stony Brook",
+    "wheelchair_boarding": 1,
+    "facilities": [
+      {
+        "id": "132",
+        "type": "ESCALATOR",
+        "name": "Stony Brook Escalator 132 (Platform to paid lobby)",
+        "short_name": "Platform to paid lobby",
+        "stop_id": "place-sbmnl",
+        "station_name": "Stony Brook",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "845",
+        "type": "ELEVATOR",
+        "name": "Stony Brook Elevator 845 (Platform to paid lobby)",
+        "short_name": "Platform to paid lobby",
+        "stop_id": "place-sbmnl",
+        "station_name": "Stony Brook",
+        "status": "out_of_service",
+        "alert": {
+          "id": "1009242",
+          "header": "Stony Brook Elevator 845 (Platform to paid lobby) is unavailable due to maintenance.",
+          "description": "A shuttle bus will be available to transport customers between Stony Brook and Jackson Square. To exit, exit the train at Jackson Square and find station personnel or use a station call box to request the shuttle bus to Stony Brook. To board, find station personnel or use a station call box at Stony Brook to request the shuttle bus to Jackson Square.",
+          "cause": "MAINTENANCE",
+          "effect": "ELEVATOR_CLOSURE",
+          "outage_start": "2026-05-08T15:25:01-04:00"
+        }
+      }
+    ],
+    "service_alerts": []
+  },
+  {
+    "case": "service_alert_only",
+    "station_id": "place-qnctr",
+    "station_name": "Quincy Center",
+    "wheelchair_boarding": 1,
+    "facilities": [
+      {
+        "id": "330",
+        "type": "ESCALATOR",
+        "name": "Quincy Center Escalator 330 (Red Line platform to lobby)",
+        "short_name": "Red Line platform to lobby",
+        "stop_id": "place-qnctr",
+        "station_name": "Quincy Center",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "810",
+        "type": "ELEVATOR",
+        "name": "Quincy Center Elevator 810 (Red Line platform to lobby)",
+        "short_name": "Red Line platform to lobby",
+        "stop_id": "place-qnctr",
+        "station_name": "Quincy Center",
+        "status": "operational",
+        "alert": null
+      },
+      {
+        "id": "896",
+        "type": "ELEVATOR",
+        "name": "Quincy Center Elevator 896 (Commuter Rail platform to lobby)",
+        "short_name": "Commuter Rail platform to lobby",
+        "stop_id": "place-qnctr",
+        "station_name": "Quincy Center",
+        "status": "operational",
+        "alert": null
+      }
+    ],
+    "service_alerts": [
+      {
+        "header": "Route 220 will be detoured beginning Sat, May 16 due to construction. The closest stops with inbound service are 319 Lincoln St and Lincoln St @ Lincoln Plaza. The closest stops with outbound service are 322 Lincoln St and Lincoln St @ Lincoln Plaza.",
+        "effect": "DETOUR",
+        "description": "Starting Saturday, May 16, construction will be taking place at the Hingham Ferry Terminal. Buses will be bypassing Shipyard Drive during this work.\r\n\r\nSkipped outbound stops:\r\nHingham Shipyard @ Ferry Terminal\r\n\r\nSkipped inbound stops:\r\nHingham Shipyard @ Ferry Terminal"
+      },
+      {
+        "header": "On the weekend of May 9-10, Fall River/New Bedford Line service will originate and terminate at Braintree. Passengers can use the Red Line for service between Braintree and South Station.",
+        "effect": "SUSPENSION",
+        "description": "To complete track improvement work, the Greenbush, Kingston, and Fall River/New Bedford Lines will originate and terminate at Braintree on the following weekends:\r\n\u2022 May 9-10\r\n\r\nPassengers can use Red Line service for travel between South Station and Braintree.\r\n\r\nAffected stations:\r\nSouth Station\r\nJFK/UMass\r\nQuincy Center\r\nBraintree"
+      },
+      {
+        "header": "On the weekend of May 9-10, Kingston Line service will originate and terminate at Braintree. Passengers can use the Red Line for service between Braintree and South Station. ",
+        "effect": "SUSPENSION",
+        "description": "To complete track improvement work, the Greenbush, Kingston, and Fall River/New Bedford Lines will originate and terminate at Braintree on the following weekend:\r\n\u2022 May 9-10\r\n\r\nPassengers can use Red Line service for travel between South Station and Braintree.  \r\n\r\nAffected stations:\r\nSouth Station\r\nJFK/UMass\r\nQuincy Center\r\nBraintree"
+      },
+      {
+        "header": "On the weekend of May 9-10, Greenbush Line service will originate and terminate at Braintree. Passengers can use the Red Line for service between Braintree and South Station.",
+        "effect": "SUSPENSION",
+        "description": "To complete track improvement work, the Greenbush, Kingston, and Fall River/New Bedford Lines will originate and terminate at Braintree during the following weekends:\r\n\u2022 May 9-10\r\n\r\nPassengers can use the Red Line for service between South Station and Braintree. Inbound Greenbush Line trains will terminate at Braintree after stopping at Weymouth Landing/East Braintree, a journey of approximately 9 minutes. Outbound Greenbush Line trains will originate at Braintree approximately 10 minutes prior to the schedule Weymouth Landing/East Braintree departure time.\r\n\r\nAffected stations:\r\nSouth Station\r\nJFK/UMass\r\nQuincy Center\r\nBraintree"
+      },
+      {
+        "header": "Red Line: Shuttle buses replace service between Broadway, Quincy Center, and Ashmont from May 29 - May 31, due to signal work. Commuter Rail service will be fare-free between South Station and Braintree during this work.",
+        "effect": "SHUTTLE",
+        "description": "Accessibility:\r\nFree and accessible shuttle buses will operate between Broadway & Quincy Center and between Broadway & Ashmont. Accessible van service will also be available. Riders should see station personnel for assistance.\r\n\r\nAlternate service:\r\nRiders are encouraged to consider Commuter Rail service between South Station and Braintree, which will be free during this service change. Regular fares should be purchased for travel beyond Braintree.\r\n\r\nTravel times:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Park Street from Ashmont/Braintree should budget at least an additional 40 \u2013 50 minutes of travel in additional to their regular commute.\r\n\r\nShuttle Locations:\r\n\r\nBroadway:\r\nW. Broadway @ Broadway Station\r\n\r\nAndrew:\r\nNorthbound - Dorchester Ave @ Leeds St\r\nSouthbound - Dorchester Ave @ Dexter St\r\n\r\nJFK/UMass:\r\nNorthbound - Inner Busway\r\nSouthbound - Outer Busway\r\n\r\nNorth Quincy:\r\nAll shuttles - North Quincy Busway\r\n\r\nWollaston:\r\nAll shuttles - Newport Ave @ Brook St\r\n\r\nQuincy Center:\r\nBurgin Pkwy @ Quincy Ctr Station\r\n\r\nSavin Hill:\r\nNorthbound - Dorchester Ave @ Savin Hill Ave\r\nSouthbound - Dorchester Ave @ Thornley Rd\r\n\r\nFields Corner:\r\nNorthbound - Dorchester Ave opp Charles St\r\nSouthbound - Dorchester Ave @ Fields Corner Station\r\n\r\nShawmut:\r\nAll shuttles - Dorchester Ave @ Centre St\r\n\r\nAshmont:\r\nAshmont Busway (Berths # 5 & 6)"
+      },
+      {
+        "header": "Red Line: Shuttle buses replace service between Broadway, JFK/UMass, and Ashmont beginning at 6:00 PM on Thursday, May 14 through Monday, May 18, for signal work.",
+        "effect": "SHUTTLE",
+        "description": "Braintree branch riders:\r\nRegular service will operate between JFK/UMass and Braintree, but riders must take a shuttle bus between Broadway and JFK/UMass.\r\n\r\nAccessibility:\r\nFree and accessible shuttle buses will operate between Broadway and Ashmont. Accessible van service will be available between Broadway and Ashmont. Riders should see station personnel for assistance.\r\n\r\nTravel times:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Park Street from Ashmont should budget at least an additional 30 \u2013 40 minutes of travel in additional to their regular commute.\r\n\r\nShuttle Locations:\r\n\r\nBroadway:\r\nW. Broadway @ Broadway Station\r\n\r\nAndrew:\r\nNorthbound - Dorchester Ave @ Leeds St\r\nSouthbound - Dorchester Ave @ Dexter St\r\n\r\nJFK/UMass:\r\nNorthbound - Inner Busway\r\nSouthbound - Outer Busway\r\n\r\nSavin Hill:\r\nNorthbound - Dorchester Ave @ Savin Hill Ave\r\nSouthbound - Dorchester Ave @ Thornley Rd\r\n\r\nFields Corner:\r\nNorthbound - Dorchester Ave opp Charles St\r\nSouthbound - Dorchester Ave @ Fields Corner Station\r\n\r\nShawmut:\r\nAll shuttles - Dorchester Ave @ Centre St\r\n\r\nAshmont:\r\nAshmont Busway (Berths # 5 & 6)"
+      }
+    ]
+  },
+  {
+    "case": "clean",
+    "station_id": "place-DB-2258",
+    "station_name": "Uphams Corner",
+    "wheelchair_boarding": 1,
+    "facilities": [
+      {
+        "id": "ramp-DB-2258",
+        "type": "RAMP",
+        "name": "Uphams Corner ramp access",
+        "short_name": "Ramp access",
+        "stop_id": "place-DB-2258",
+        "station_name": "Uphams Corner",
+        "status": "operational",
+        "alert": null
+      }
+    ],
+    "service_alerts": []
+  }
+]

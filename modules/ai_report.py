@@ -162,14 +162,14 @@ def _build_station_prompt(station_name, station_facilities,
         f"{summary_line}\n\n"
         f"Facilities:\n{facilities_block}\n\n"
         f"Service alerts:\n{service_block}\n\n"
-        f"In one short paragraph (1-3 sentences):\n"
-        f"1. State whether the station is currently accessible from street to platform.\n"
-        f"2. If not, what riders should do instead — use specific details from "
-        f"the MBTA instructions above.\n"
-        f"In another short paragraph (1-2 sentences):\n"
-        f"1. Note any service disruptions that may affect travel through this station.\n\n"
-        f"Only use the data above. Write directly and concisely — "
-        f"no greeting or preamble. Start with the key information immediately."
+        f"Respond with exactly two bullet points — no paragraphs, no preamble, no headers:\n"
+        f"• Accessibility status: is the station accessible street-to-platform? "
+        f"If not, what should riders do? Describe what the rider will experience — "
+        f"avoid citing internal route codes or numbers unless you explain what they mean.\n"
+        f"• Service disruptions: any route-level disruptions affecting travel through "
+        f"this station? Describe the real-world impact (e.g., 'trains are not running; "
+        f"take a replacement bus'). If none, state that briefly.\n\n"
+        f"Only use the data above."
     )
     return prompt
 

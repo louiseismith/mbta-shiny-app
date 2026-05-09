@@ -11,6 +11,7 @@ library(shiny)
 library(leaflet)
 library(dplyr)
 library(reticulate)
+library(plotly)
 venv_path = file.path(getwd(), "..", "..", ".venv")
 if (dir.exists(venv_path)) use_virtualenv(venv_path, required = TRUE)
 
@@ -496,7 +497,35 @@ ui = fluidPage(
       }
       .trip-sortable-item .item-remove:hover { color: #d9534f; }
       .sortable-ghost { opacity: 0.35; }
+      .outage-history-panel { margin-top: 14px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 4px; }
+      .outage-history-panel > summary {
+        cursor: pointer; font-weight: 600; font-size: 0.88em; color: #444;
+        padding: 6px 10px; background: #f5f5f5; border-radius: 4px;
+        user-select: none; list-style: none; display: flex; align-items: center; gap: 6px;
+      }
+      .outage-history-panel > summary::before { content: '▶'; font-size: 0.7em; color: #888; }
+      .outage-history-panel > summary:hover { background: #ebebeb; color: #222; }
+      details[open].outage-history-panel > summary {
+        border-radius: 4px 4px 0 0; border-bottom: 1px solid #ddd;
+      }
+      details[open].outage-history-panel > summary::before { content: '▼'; }
+      #outage_history_plot .hovertext { display: none !important; }
+      #gantt-tooltip {
+        display: none; position: fixed; z-index: 9999;
+        background: rgba(40,40,40,0.88); color: white;
+        border-radius: 4px; padding: 5px 9px;
+        font-size: 11px; line-height: 1.5;
+        pointer-events: none; white-space: nowrap;
+        transform: translateX(-50%);
+      }
+      #gantt-tooltip::after {
+        content: ''; position: absolute;
+        top: 100%; left: 50%; transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: rgba(40,40,40,0.88);
+      }
     ")),
+    tags$div(id = "gantt-tooltip"),
     tags$script(src = "https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"),
     tags$script(HTML("
       $(document).on('shiny:value', function(e) {
@@ -516,6 +545,13 @@ ui = fluidPage(
           });
         }, 50);
       });
+    ")),
+    tags$script(HTML("
+      document.addEventListener('toggle', function(e) {
+        if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
+        var plt = e.target.querySelector('.plotly-graph-div');
+        if (plt) Plotly.Plots.resize(plt);
+      }, true);
     "))
   ),
   titlePanel("MBTA Accessibility Tracker"),
@@ -531,6 +567,7 @@ ui = fluidPage(
           ),
           uiOutput("station_title"),
           uiOutput("ai_report"),
+          uiOutput("outage_history_section"),
           div(class = "facility-cards", uiOutput("station_facilities"))
         ),
         # --- Tab 2: trip checker ---
@@ -1391,13 +1428,31 @@ server = function(input, output, session) {
     if (grepl("^__error__:", report)) {
       return(tags$div(class = "ai-report-error", "AI report unavailable. Is Ollama running?"))
     }
-    paragraphs = strsplit(report, "\n\\s*\n")[[1]]
-    paragraphs = trimws(paragraphs)
-    paragraphs = paragraphs[paragraphs != ""]
+    # Parse markdown-style text into HTML tags.
+    # Supports • / - / * bullet lines and **bold** within any line.
+    render_md = function(text) {
+      bold = function(s) HTML(gsub("\\*\\*(.+?)\\*\\*", "<strong>\\1</strong>", s))
+      lines = trimws(strsplit(text, "\n")[[1]])
+      lines = lines[lines != ""]
+      elements = list(); i = 1L
+      while (i <= length(lines)) {
+        if (grepl("^[•\\-\\*]\\s+", lines[[i]])) {
+          j = i
+          while (j <= length(lines) && grepl("^[•\\-\\*]\\s+", lines[[j]])) j = j + 1L
+          items = sub("^[•\\-\\*]\\s+", "", lines[i:(j - 1L)])
+          elements[[length(elements) + 1L]] = tags$ul(lapply(items, function(it) tags$li(bold(it))))
+          i = j
+        } else {
+          elements[[length(elements) + 1L]] = tags$p(bold(lines[[i]]))
+          i = i + 1L
+        }
+      }
+      elements
+    }
     tags$div(
       class = "ai-report-box",
       tags$div(class = "ai-report-label", "AI Accessibility Report"),
-      tagList(lapply(paragraphs, tags$p))
+      tagList(render_md(report))
     )
   })
 
@@ -1410,6 +1465,171 @@ server = function(input, output, session) {
     cards = station_facility_cards(fac, id, flm = d$facility_line_mapping %||% list())
     if (length(cards) == 0) return(p(em("No facility data for this station.")))
     tagList(cards)
+  })
+
+  output$outage_history_section = renderUI({
+    if (is.null(selected_station())) return(NULL)
+    tags$details(
+      class = "outage-history-panel",
+      tags$summary("Outage History (30 days)"),
+      plotlyOutput("outage_history_plot", height = "auto")
+    )
+  })
+
+  output$outage_history_plot = renderPlotly({
+    id = selected_station()
+    req(!is.null(id))
+
+    rows = fetch_outage_history(id, 30L)
+
+    empty_plot = function(msg) {
+      plot_ly(type = "scatter", mode = "lines") %>%
+        layout(
+          height = 60,
+          annotations = list(list(
+            text = msg, showarrow = FALSE,
+            xref = "paper", yref = "paper", x = 0.5, y = 0.5,
+            font = list(color = "#999", size = 12)
+          )),
+          xaxis = list(visible = FALSE), yaxis = list(visible = FALSE),
+          margin = list(l = 0, r = 0, t = 0, b = 0)
+        ) %>% config(displayModeBar = FALSE)
+    }
+
+    if (length(rows) == 0) return(empty_plot("No history data for this station."))
+
+    # Look up station name so we can strip it from the (redundant) label prefix
+    d = app_data()
+    station_nm = id
+    for (s in d$stations) {
+      if (identical(s$id, id)) { station_nm = s$name %||% id; break }
+    }
+    strip_station = function(x) {
+      prefix = paste0(station_nm, " ")
+      ifelse(startsWith(x, prefix), substr(x, nchar(prefix) + 1L, nchar(x)), x)
+    }
+
+    fac_name     = sapply(rows, `[[`, "facility_name")
+    fac_type     = sapply(rows, `[[`, "facility_type")
+    status       = sapply(rows, `[[`, "status")
+    logged_at    = as.POSIXct(sapply(rows, `[[`, "logged_at"),
+                              format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+    alert_header = sapply(rows, function(r) r$alert_header %||% "")
+    cause        = sapply(rows, function(r) r$cause %||% "")
+
+    df = data.frame(
+      facility_name = fac_name,
+      facility_type = fac_type,
+      status        = status,
+      logged_at     = logged_at,
+      alert_header  = alert_header,
+      cause         = cause,
+      stringsAsFactors = FALSE
+    )
+    df = df[order(df$facility_name, df$logged_at), ]
+
+    window_start = Sys.time() - 30 * 24 * 3600
+    now_t        = Sys.time()
+
+    parts = lapply(split(df, df$facility_name), function(fac) {
+      fac = fac[order(fac$logged_at), ]
+      n   = nrow(fac)
+      starts        = fac$logged_at
+      starts[1]     = window_start  # first segment always covers full window
+      data.frame(
+        facility_name = fac$facility_name,
+        seg_start     = starts,
+        seg_end       = c(if (n > 1) fac$logged_at[-1] else NULL, now_t),
+        status        = fac$status,
+        alert_header  = fac$alert_header,
+        cause         = fac$cause,
+        stringsAsFactors = FALSE
+      )
+    })
+    intervals = do.call(rbind, parts)
+    intervals$seg_start = .POSIXct(as.numeric(intervals$seg_start), tz = "UTC")
+    intervals$seg_end   = .POSIXct(as.numeric(intervals$seg_end),   tz = "UTC")
+
+    intervals$status_label = ifelse(
+      intervals$status == "operational", "Operational", "Out of service"
+    )
+    # Split "Type 123 (description)" → "Type 123<br>(description)" for clean 2-line labels
+    wrap_label = function(x, max_desc = 24) {
+      m = regexpr("\\s*\\(", x)
+      if (m > 0) {
+        line1 = trimws(substr(x, 1L, m - 1L))
+        line2 = substr(x, m + attr(m, "match.length") - 1L, nchar(x))
+        if (nchar(line2) > max_desc) line2 = paste0(substr(line2, 1L, max_desc - 1L), "…")
+        return(paste(line1, line2, sep = "<br>"))
+      }
+      if (nchar(x) > max_desc) x = paste0(substr(x, 1L, max_desc - 1L), "…")
+      x
+    }
+    intervals$label = sapply(strip_station(intervals$facility_name), wrap_label)
+
+    fmt = function(t) format(t, "%b %d", tz = "UTC")
+    intervals$hover = paste0(
+      fmt(intervals$seg_start), " – ", fmt(intervals$seg_end),
+      ifelse(intervals$cause != "" & intervals$cause != "UNKNOWN_CAUSE",
+             paste0(" · ", tolower(gsub("_", " ", intervals$cause))), "")
+    )
+
+    n_fac    = length(unique(intervals$label))
+    chart_h  = max(130, n_fac * 62 + 85)
+
+    epsilon = 1800  # 30 min — covers sub-pixel gaps between adjacent traces
+    intervals$seg_end_r = .POSIXct(as.numeric(intervals$seg_end) + epsilon, tz = "UTC")
+
+    op  = intervals[intervals$status == "operational",    ]
+    out = intervals[intervals$status == "out_of_service", ]
+
+    # out_of_service drawn first (below), operational drawn second (on top)
+    # so operational correctly covers any epsilon overlap at boundaries
+    p = plot_ly()
+    if (nrow(out) > 0) p = p %>% add_segments(
+      data = out,
+      x = ~seg_start, xend = ~seg_end_r, y = ~label, yend = ~label,
+      line = list(color = "#d9534f", width = 14),
+      name = "Out of service",
+      text = ~hover, hoverinfo = "text"
+    )
+    if (nrow(op) > 0) p = p %>% add_segments(
+      data = op,
+      x = ~seg_start, xend = ~seg_end_r, y = ~label, yend = ~label,
+      line = list(color = "#5cb85c", width = 14),
+      name = "Operational",
+      text = ~hover, hoverinfo = "text"
+    )
+    p %>%
+      layout(
+        height     = chart_h,
+        xaxis      = list(title = "", range = list(window_start, now_t),
+                          tickformat = "%b %d", tickangle = -35, nticks = 5),
+        yaxis      = list(title = "", automargin = TRUE, tickfont = list(size = 11)),
+        legend     = list(orientation = "h", x = 0, y = -0.22, font = list(size = 11)),
+        hoverlabel = list(font = list(size = 11), namelength = 0),
+        margin     = list(r = 10, t = 8, b = 55),
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor  = "rgba(0,0,0,0)"
+      ) %>%
+      config(displayModeBar = FALSE) %>%
+      htmlwidgets::onRender("
+        function(el) {
+          var tip = document.getElementById('gantt-tooltip');
+          el.on('plotly_hover', function(data) {
+            var pt = data.points[0];
+            if (!pt || !pt.text) return;
+            tip.innerHTML = pt.text;
+            tip.style.display = 'block';
+            var e = data.event;
+            tip.style.left = e.clientX + 'px';
+            tip.style.top  = (e.clientY - tip.offsetHeight - 10) + 'px';
+          });
+          el.on('plotly_unhover', function() {
+            tip.style.display = 'none';
+          });
+        }
+      ")
   })
 }
 

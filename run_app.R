@@ -42,7 +42,7 @@ if (is_app_dir(getwd())) {
 }
 
 # Install R dependencies if missing
-required = c("shiny", "leaflet", "dplyr", "reticulate")
+required = c("shiny", "leaflet", "dplyr", "reticulate", "plotly")
 missing = required[!sapply(required, requireNamespace, quietly = TRUE)]
 if (length(missing) > 0) {
   message("Installing R packages: ", paste(missing, collapse = ", "))

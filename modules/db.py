@@ -171,3 +171,70 @@ def _read_facility_line_mapping_from_db():
         return {}
     finally:
         conn.close()
+
+
+def fetch_outage_history(stop_id, days=30):
+    """Return status-change rows for elevator/escalator facilities at a station.
+
+    Includes one pre-window seed row per facility (its status at the window boundary)
+    so intervals can be built from the start of the window. Returns a list of dicts:
+    {facility_id, facility_name, facility_type, status, logged_at (naive ISO string),
+     alert_header, cause}.
+    """
+    conn = _get_supabase_conn()
+    if conn is None:
+        return []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                WITH in_window AS (
+                    SELECT facility_id, facility_name, facility_type, status,
+                           logged_at::timestamptz AS ts,
+                           alert_header, cause
+                    FROM outage_log
+                    WHERE stop_id = %s
+                      AND facility_type IN ('ELEVATOR', 'ESCALATOR')
+                      AND logged_at::timestamptz >= NOW() - %s * INTERVAL '1 day'
+                ),
+                pre_window AS (
+                    SELECT DISTINCT ON (facility_id)
+                           facility_id, facility_name, facility_type, status,
+                           (NOW() - %s * INTERVAL '1 day') AS ts,
+                           alert_header, cause
+                    FROM outage_log
+                    WHERE stop_id = %s
+                      AND facility_type IN ('ELEVATOR', 'ESCALATOR')
+                      AND logged_at::timestamptz < NOW() - %s * INTERVAL '1 day'
+                    ORDER BY facility_id, logged_at DESC
+                )
+                SELECT facility_id, facility_name, facility_type, status, ts,
+                       alert_header, cause
+                FROM pre_window
+                UNION ALL
+                SELECT facility_id, facility_name, facility_type, status, ts,
+                       alert_header, cause
+                FROM in_window
+                ORDER BY facility_id, ts
+            """, (stop_id, days, days, stop_id, days))
+            rows = cur.fetchall()
+        return [
+            {
+                "facility_id":   row[0],
+                "facility_name": row[1],
+                "facility_type": row[2],
+                "status":        row[3],
+                "logged_at": (
+                    row[4].replace(tzinfo=None).isoformat()
+                    if hasattr(row[4], "isoformat")
+                    else str(row[4])
+                ),
+                "alert_header": row[5],
+                "cause":        row[6],
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        print(f"fetch_outage_history error: {e}")
+        return []
+    finally:
+        conn.close()
