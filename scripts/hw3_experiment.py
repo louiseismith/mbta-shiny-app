@@ -7,8 +7,8 @@ Run from the homework/shiny_app/ directory:
     python scripts/hw3_experiment.py
 
 Outputs:
-    data/hw3_scores.csv     — raw scores (one row per trial)
-    data/hw3_boxplot.png    — boxplot of scores by prompt variant
+    data/hw3_scores.csv   — raw scores (one row per trial)
+    data/hw3_chart.png    — bar chart with 95% CIs by prompt variant
 """
 
 import csv
@@ -26,6 +26,9 @@ import pandas as pd
 from dotenv import load_dotenv
 from scipy import stats
 
+import time
+import threading
+
 from modules.ai_report import _format_duration, _query_ollama
 
 matplotlib.use("Agg")
@@ -34,9 +37,24 @@ load_dotenv()
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 FIXTURES_PATH = os.path.join(DATA_DIR, "hw3_fixtures.json")
 SCORES_PATH = os.path.join(DATA_DIR, "hw3_scores.csv")
-BOXPLOT_PATH = os.path.join(DATA_DIR, "hw3_boxplot.png")
+CHART_PATH = os.path.join(DATA_DIR, "hw3_chart.png")
 
-RUNS_PER_CELL = 5  # runs per (station × prompt) → 30 scores per prompt variant
+RUNS_PER_CELL = 20  # runs per (station × prompt) → 120 scores per prompt variant
+
+# Rate limiter for Ollama Cloud (50 req/min hard limit; target 40 to leave headroom)
+_ollama_lock = threading.Lock()
+_ollama_last_call = 0.0
+_OLLAMA_MIN_INTERVAL = 60.0 / 40  # 1.5s between calls
+
+
+def _query_ollama_rate_limited(prompt):
+    global _ollama_last_call
+    with _ollama_lock:
+        wait = _OLLAMA_MIN_INTERVAL - (time.time() - _ollama_last_call)
+        if wait > 0:
+            time.sleep(wait)
+        _ollama_last_call = time.time()
+    return _query_ollama(prompt)
 
 # ── Data block (shared across all prompt variants) ───────────────────────────
 
@@ -198,23 +216,14 @@ Actionability — tells a rider what to do if something is broken:
 Return exactly: {"scannability": N, "clarity": N, "actionability": N}"""
 
 
-def validate_report(fixture, briefing):
-    out_count = sum(1 for f in fixture["facilities"] if f.get("status") == "out_of_service")
-    alert_count = len(fixture.get("service_alerts", []))
-    context = (
-        f"Station: {fixture['station_name']}\n"
-        f"Facilities out of service: {out_count}\n"
-        f"Service alerts active: {alert_count}\n"
-        f"Wheelchair accessible: {'No' if fixture.get('wheelchair_boarding') == 2 else 'Yes'}"
-    )
-
+def validate_report(data_block, briefing):
     resp = _client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=80,
         system="You are evaluating AI-generated transit accessibility briefings. Follow the rubric exactly and return only JSON.",
         messages=[{"role": "user", "content": (
-            f"Station context:\n{context}\n\n"
-            f"Briefing:\n{briefing}\n\n"
+            f"Source data the briefing was generated from:\n{data_block}\n"
+            f"Briefing to evaluate:\n{briefing}\n\n"
             f"{_RUBRIC}"
         )}],
     )
@@ -232,24 +241,33 @@ def validate_report(fixture, briefing):
 
 # ── Experiment runner ─────────────────────────────────────────────────────────
 
-def run_trial(fixture, prompt_label, run_num):
-    builder = PROMPTS[prompt_label]
-    prompt = builder(
-        fixture["station_name"],
-        fixture["facilities"],
-        fixture.get("service_alerts", []),
-        fixture.get("wheelchair_boarding", 0),
-    )
-    briefing = _query_ollama(prompt)
-    scores = validate_report(fixture, briefing)
-    return {
-        "station": fixture["station_name"],
-        "case": fixture.get("case", "unknown"),
-        "prompt": prompt_label,
-        "run": run_num,
-        "briefing": briefing,
-        **scores,
-    }
+def run_trial(fixture, prompt_label, run_num, max_retries=3):
+    name = fixture["station_name"]
+    facilities = fixture["facilities"]
+    service_alerts = fixture.get("service_alerts", [])
+    wheelchair_boarding = fixture.get("wheelchair_boarding", 0)
+
+    data_block = _build_data_block(name, facilities, service_alerts, wheelchair_boarding)
+    prompt = PROMPTS[prompt_label](name, facilities, service_alerts, wheelchair_boarding)
+
+    last_exc = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            briefing = _query_ollama_rate_limited(prompt)
+            scores = validate_report(data_block, briefing)
+            return {
+                "station": name,
+                "case": fixture.get("case", "unknown"),
+                "prompt": prompt_label,
+                "run": run_num,
+                "briefing": briefing,
+                **scores,
+            }
+        except Exception as e:
+            last_exc = e
+            if attempt < max_retries:
+                print(f"    retry {attempt}/{max_retries - 1} for Prompt {prompt_label} | {name} run {run_num}: {e}")
+    raise last_exc
 
 
 def run_experiment(fixtures):
@@ -316,30 +334,42 @@ def run_statistics(df):
 
 # ── Visualization ─────────────────────────────────────────────────────────────
 
-def plot_boxplots(df):
+def plot_bar_ci(df):
+    import numpy as np
+
     dims = ["scannability", "clarity", "actionability"]
-    fig, axes = plt.subplots(1, 3, figsize=(12, 5), sharey=True)
+    prompt_labels = ["A\n(prose)", "B\n(bullets)", "C\n(bullets\n+ impact)"]
+    colors = ["#d9e8f5", "#a8c8e8", "#4a90c4"]
+    x = np.arange(len(dims))
+    width = 0.25
+
+    fig, ax = plt.subplots(figsize=(10, 5))
     fig.suptitle("MBTA Briefing Quality by Prompt Variant", fontsize=14, fontweight="bold")
 
-    colors = ["#d9e8f5", "#a8c8e8", "#4a90c4"]
-    labels = ["A\n(prose)", "B\n(bullets)", "C\n(bullets\n+ impact)"]
+    for i, (prompt, label, color) in enumerate(zip(["A", "B", "C"], prompt_labels, colors)):
+        means, cis = [], []
+        for dim in dims:
+            vals = df[df["prompt"] == prompt][dim].values
+            mean = vals.mean()
+            se = vals.std() / len(vals) ** 0.5
+            means.append(mean)
+            cis.append(1.96 * se)
+        bars = ax.bar(x + i * width, means, width, label=label, color=color,
+                      edgecolor="gray", linewidth=0.5)
+        ax.errorbar(x + i * width, means, yerr=cis, fmt="none",
+                    color="black", capsize=4, linewidth=1.2)
 
-    for ax, dim in zip(axes, dims):
-        data = [df[df["prompt"] == p][dim].values for p in ["A", "B", "C"]]
-        bp = ax.boxplot(data, labels=labels, patch_artist=True, widths=0.5)
-        for patch, color in zip(bp["boxes"], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.85)
-        ax.set_title(dim.capitalize(), fontweight="bold", pad=8)
-        ax.set_ylim(0.5, 5.5)
-        ax.set_yticks([1, 2, 3, 4, 5])
-        if dim == "scannability":
-            ax.set_ylabel("Score (1–5)")
-        ax.grid(axis="y", alpha=0.3, linestyle="--")
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([d.capitalize() for d in dims])
+    ax.set_ylabel("Mean Score (1–5) with 95% CI")
+    ax.set_ylim(0, 5.5)
+    ax.set_yticks([1, 2, 3, 4, 5])
+    ax.legend(title="Prompt", bbox_to_anchor=(1.01, 1), loc="upper left")
+    ax.grid(axis="y", alpha=0.3, linestyle="--")
 
     plt.tight_layout()
-    plt.savefig(BOXPLOT_PATH, dpi=150, bbox_inches="tight")
-    print(f"Boxplot saved → {BOXPLOT_PATH}")
+    plt.savefig(CHART_PATH, dpi=150, bbox_inches="tight")
+    print(f"Chart saved → {CHART_PATH}")
 
 
 # ── Sample output ────────────────────────────────────────────────────────────
@@ -399,7 +429,7 @@ def main():
 
     df = pd.DataFrame(results)
     run_statistics(df)
-    plot_boxplots(df)
+    plot_bar_ci(df)
     write_samples(df)
     print("Done.")
 
