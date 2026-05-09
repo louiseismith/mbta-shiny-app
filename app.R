@@ -13,7 +13,16 @@ library(dplyr)
 library(reticulate)
 library(plotly)
 venv_path = file.path(getwd(), "..", "..", ".venv")
-if (dir.exists(venv_path)) use_virtualenv(venv_path, required = TRUE)
+if (dir.exists(venv_path)) {
+  use_virtualenv(venv_path, required = TRUE)
+} else {
+  req_file = file.path(getwd(), "requirements.txt")
+  if (file.exists(req_file)) {
+    pkgs = trimws(readLines(req_file))
+    pkgs = pkgs[nchar(pkgs) > 0]
+    reticulate::py_install(pkgs)
+  }
+}
 
 ## 0.2 Load API key ####################################
 
