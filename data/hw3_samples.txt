@@ -1,0 +1,21 @@
+SAMPLE BRIEFINGS — one per prompt variant
+============================================================
+
+PROMPT A  |  Hynes Convention Center  |  case: fully_inaccessible
+scores: scannability=3  clarity=3  actionability=3
+────────────────────────────────────────────────────────────
+Hynes Convention Center station is currently **not wheelchair accessible** from street to platform. Due to ongoing Green Line C Branch shuttle service for infrastructure upgrades, riders needing accessible travel should utilize nearby D branch service at Reser station and avoid shuttle bus stops at Saint Mary’s Street, Kent Street, or Brandon Hall.
+
+Green Line C Branch service is currently operating with shuttle buses replacing trains between Kenmore and Cleveland Circle through Sunday, May 17. Please note that the shuttle bus service will not stop at Saint Mary's Street, Kent Street, or Brandon Hall.
+
+PROMPT B  |  Andrew  |  case: combined
+scores: scannability=5  clarity=4  actionability=3
+────────────────────────────────────────────────────────────
+• Accessibility status: Street-to-platform access is partially impacted; two escalators serving the Ashmont/Braintree platform to the busway are out of service (one indefinitely, one currently unknown), but all three elevators (Lobby to street, Alewife platform to lobby, and Ashmont/Braintree platform to lobby) are operational.
+• Service disruptions: Yes, Red Line service is impacted by shuttle buses replacing service between Broadway, Quincy Center, and Ashmont (May 29-31) and between Broadway, JFK/UMass, and Ashmont (May 14-18). Accessible shuttle buses and van service will be provided during these disruptions.
+
+PROMPT C  |  Hynes Convention Center  |  case: fully_inaccessible
+scores: scannability=5  clarity=4  actionability=4
+────────────────────────────────────────────────────────────
+• Accessibility status: This station is not wheelchair accessible. Due to ongoing construction, Green Line C Branch riders should utilize nearby D branch service at Reser station.
+• Service disruptions: Green Line C Branch service is being replaced by shuttle buses between Kenmore and Cleveland Circle. Shuttle buses will not stop at three stations, so riders must use the next available stop.
